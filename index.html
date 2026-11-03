@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Carga Total</title>
+<meta name="theme-color" content="#131518">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: placar de duelo no topo (as duas barras carregadas), depois medidas, gráfico, calendário de treinos e conquistas numa coluna única. */
+:root {
+  --bg: #F1F2EE;
+  --surface: #FFFFFF;
+  --sunken: #E6E8E2;
+  --ink: #17191D;
+  --muted: #5C6169;
+  --line: #D6D9D2;
+  --bar: #8A9099;
+  --p10: #2B9858;
+  --p15: #D9A200;
+  --p20: #2257C7;
+  --p25: #CF2D39;
+  --good: #1D8A4B;
+  --bad: #C2363F;
+  --pa: var(--p25);
+  --pb: var(--p20);
+  --xp: var(--p15);
+  --display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131518; --surface: #1C1F23; --sunken: #24282D; --ink: #ECEDEA; --muted: #9AA0A8; --line: #2D3137; --bar: #A9B0B9;
+    --p10: #3DBA70; --p15: #F2C230; --p20: #4C82F0; --p25: #EF4B55; --good: #46C27C; --bad: #F06A72;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131518; --surface: #1C1F23; --sunken: #24282D; --ink: #ECEDEA; --muted: #9AA0A8; --line: #2D3137; --bar: #A9B0B9;
+  --p10: #3DBA70; --p15: #F2C230; --p20: #4C82F0; --p25: #EF4B55; --good: #46C27C; --bad: #F06A72;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: max(16px, env(safe-area-inset-top, 0px)) max(40px, env(safe-area-inset-bottom, 0px));
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 28px; }
+h1, h2, h3 { font-family: var(--display); text-transform: uppercase; letter-spacing: .01em; line-height: 1; margin: 0; text-wrap: balance; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--xp); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* header */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand h1 { font-size: 40px; font-weight: 900; letter-spacing: .02em; }
+.brand p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.logo { width: 46px; height: 46px; flex: none; }
+.who { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+.who b { color: var(--ink); font-weight: 600; }
+
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.btn.go { background: var(--p10); border-color: var(--p10); color: #fff; }
+.btn.small { padding: 5px 10px; font-size: 13px; border-radius: 8px; }
+.btn.danger { color: var(--bad); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.note { border: 1px dashed var(--line); border-radius: 12px; padding: 12px 14px; color: var(--muted); font-size: 14px; background: var(--surface); }
+.note b { color: var(--ink); }
+
+/* duel */
+.duel { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: stretch; }
+.fighter { --pc: var(--pa); background: var(--surface); border: 1px solid var(--line); border-top: 6px solid var(--pc); border-radius: 16px; padding: 18px; display: grid; gap: 12px; min-width: 0; }
+.f-top { display: flex; align-items: center; gap: 12px; }
+.mascot { font-size: 40px; line-height: 1; width: 56px; height: 56px; display: grid; place-items: center; background: var(--sunken); border-radius: 14px; flex: none; }
+.f-name { min-width: 0; flex: 1; }
+.f-name h2 { font-size: 30px; font-weight: 800; overflow-wrap: anywhere; }
+.f-name p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; background: var(--pc); color: #fff; padding: 2px 7px; border-radius: 99px; vertical-align: middle; margin-left: 6px; font-family: var(--body); }
+.loadline { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.load { font-family: var(--display); font-weight: 900; font-size: 64px; line-height: .9; }
+.load small { font-size: 26px; font-weight: 800; margin-left: 4px; color: var(--muted); }
+.lvl { font-family: var(--display); font-weight: 800; font-size: 20px; text-transform: uppercase; color: var(--muted); }
+.barbell { width: 100%; height: auto; display: block; }
+.xpbar { height: 10px; background: var(--sunken); border-radius: 99px; overflow: hidden; }
+.xpbar i { display: block; height: 100%; background: var(--xp); border-radius: 99px; transition: width .6s ease; }
+.xptext { margin: -4px 0 0; font-size: 12.5px; color: var(--muted); }
+.fstats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0; }
+.fstats div { background: var(--sunken); border-radius: 10px; padding: 8px 10px; min-width: 0; }
+.fstats dt { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.fstats dd { margin: 2px 0 0; font-weight: 700; font-size: 15px; }
+.vs { display: grid; align-content: center; justify-items: center; gap: 6px; padding: 0 4px; text-align: center; }
+.vs .big { font-family: var(--display); font-weight: 900; font-size: 54px; line-height: 1; color: var(--muted); }
+.vs p { margin: 0; font-size: 12.5px; color: var(--muted); max-width: 120px; }
+.vs b { color: var(--ink); }
+.empty-fighter { border-top-color: var(--line); border-style: dashed; align-content: center; justify-items: center; text-align: center; color: var(--muted); }
+.empty-fighter h2 { color: var(--muted); }
+
+.actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.actions .hint { color: var(--muted); font-size: 13px; }
+
+/* sections */
+.sec { display: grid; gap: 14px; }
+.sec-head { display: flex; align-items: end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sec-head h2 { font-size: 30px; font-weight: 800; }
+.sec-head p { margin: 4px 0 0; color: var(--muted); font-size: 13.5px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--surface); border-radius: 99px; padding: 5px 12px; font-size: 13px; font-weight: 600; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; }
+th, td { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+td.r, th.r { text-align: right; }
+tr:last-child td { border-bottom: 0; }
+.delta { display: inline-block; padding: 2px 8px; border-radius: 99px; font-weight: 700; font-size: 13px; background: var(--sunken); }
+.delta.good { color: var(--good); }
+.delta.bad { color: var(--bad); }
+.spark { width: 96px; height: 26px; display: block; }
+
+.chart svg { width: 100%; height: auto; display: block; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 4px; border-radius: 2px; display: inline-block; }
+
+/* calendar */
+.cals { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.cal-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; font-weight: 700; }
+.cal-title small { color: var(--muted); font-weight: 500; }
+.cal { display: grid; grid-template-columns: 28px repeat(12, minmax(0, 1fr)); gap: 3px; }
+.cal .wd { font-size: 10px; color: var(--muted); align-self: center; }
+.cell { aspect-ratio: 1; max-width: 100%; border-radius: 4px; background: var(--sunken); border: 0; padding: 0; position: relative; }
+.cell.on { background: var(--pc); }
+.cell.meas::after { content: ""; position: absolute; inset: 28%; border-radius: 50%; background: var(--surface); }
+.cell.today { outline: 2px solid var(--ink); outline-offset: 0; }
+.cell.future { opacity: .35; }
+button.cell:hover { filter: brightness(.9); }
+.cal-legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 10px; flex-wrap: wrap; }
+
+/* badges */
+.badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.badge { display: grid; grid-template-columns: 52px 1fr; gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+.medal { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font-family: var(--display); font-weight: 900; font-size: 20px; background: var(--sunken); color: var(--muted); border: 3px solid var(--line); }
+.badge.won .medal { background: var(--xp); color: #1b1600; border-color: color-mix(in srgb, var(--xp) 60%, var(--ink)); }
+.badge h3 { font-family: var(--body); text-transform: none; font-size: 14.5px; font-weight: 700; letter-spacing: 0; }
+.badge p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+.holders { display: flex; gap: 4px; margin-top: 4px; min-height: 20px; }
+.holders span { font-size: 15px; }
+
+/* history */
+.hist { display: grid; gap: 8px; }
+.hrow { display: grid; grid-template-columns: 90px 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.hrow:last-child { border-bottom: 0; }
+.hdate { font-family: var(--display); font-size: 22px; font-weight: 800; }
+.hvals { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--muted); min-width: 0; }
+.hvals b { color: var(--ink); font-weight: 600; }
+.hbtns { display: flex; gap: 6px; }
+
+/* login */
+.login { display: grid; grid-template-columns: 1.1fr 1fr; gap: 24px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 24px; }
+.login h2 { font-size: 44px; font-weight: 900; }
+.login p { color: var(--muted); }
+.field { display: grid; gap: 5px; }
+.field label, .field .lab { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.field input, .field select, .field textarea { width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.field .unit { position: relative; }
+.field .unit input { padding-right: 40px; }
+.field .unit span { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 13px; pointer-events: none; }
+.form { display: grid; gap: 14px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.mascots { display: flex; flex-wrap: wrap; gap: 6px; }
+.mascots label { cursor: pointer; }
+.mascots input { position: absolute; opacity: 0; pointer-events: none; }
+.mascots span { width: 46px; height: 46px; display: grid; place-items: center; font-size: 26px; border-radius: 12px; background: var(--sunken); border: 2px solid transparent; }
+.mascots input:checked + span { border-color: var(--ink); background: var(--surface); }
+.mascots input:focus-visible + span { outline: 3px solid var(--xp); }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg label { position: relative; }
+.seg input { position: absolute; opacity: 0; }
+.seg span { display: inline-block; border: 1px solid var(--line); border-radius: 99px; padding: 7px 14px; font-weight: 600; font-size: 14px; cursor: pointer; }
+.seg input:checked + span { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.seg input:focus-visible + span { outline: 3px solid var(--xp); }
+
+/* sheet */
+.sheet { position: fixed; inset: 0; background: color-mix(in srgb, var(--ink) 45%, transparent); display: grid; place-items: center; z-index: 50; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.sheet-card { background: var(--surface); border-radius: 18px; width: min(620px, 100%); max-height: 100%; overflow: auto; padding: 22px; display: grid; gap: 16px; border: 1px solid var(--line); }
+.sheet-card h2 { font-size: 32px; font-weight: 900; }
+.sheet-foot { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+
+/* toast + confetti */
+.toasts { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(18px, env(safe-area-inset-bottom, 0px)); display: grid; gap: 8px; z-index: 60; width: min(420px, calc(100% - 32px)); }
+.toast { background: var(--ink); color: var(--bg); padding: 12px 16px; border-radius: 12px; font-weight: 600; box-shadow: 0 8px 30px rgba(0,0,0,.25); animation: pop .25s ease-out; }
+.toast.lvlup { background: var(--xp); color: #1b1600; font-family: var(--display); font-size: 22px; text-transform: uppercase; font-weight: 900; }
+@keyframes pop { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+#confetti { position: fixed; inset: 0; pointer-events: none; z-index: 55; width: 100%; height: 100%; }
+footer { color: var(--muted); font-size: 12.5px; text-align: center; }
+footer button { background: none; border: 0; color: inherit; text-decoration: underline; padding: 0; }
+
+@media (max-width: 760px) {
+  .duel { grid-template-columns: 1fr; }
+  .vs { grid-auto-flow: column; padding: 0; gap: 12px; }
+  .vs .big { font-size: 36px; }
+  .vs p { max-width: none; }
+  .fstats { grid-template-columns: repeat(2, 1fr); }
+  .login { grid-template-columns: 1fr; padding: 18px; }
+  .login h2 { font-size: 36px; }
+  .brand h1 { font-size: 32px; }
+  .hrow { grid-template-columns: 1fr; gap: 6px; }
+  .load { font-size: 54px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 46 46" aria-hidden="true">
+        <rect x="2" y="21" width="42" height="4" rx="2" fill="var(--bar)"/>
+        <rect x="7" y="9" width="6" height="28" rx="2" fill="var(--p25)"/>
+        <rect x="13" y="13" width="4" height="20" rx="1.5" fill="var(--p20)"/>
+        <rect x="33" y="9" width="6" height="28" rx="2" fill="var(--p25)"/>
+        <rect x="29" y="13" width="4" height="20" rx="1.5" fill="var(--p20)"/>
+      </svg>
+      <div>
+        <h1>Carga Total</h1>
+        <p>Placar de evolução do casal. Cada medida e cada treino carrega a sua barra.</p>
+      </div>
+    </div>
+    <div class="who" id="who"></div>
+  </header>
+
+  <div id="banner" hidden></div>
+  <section id="login" hidden></section>
+  <section class="duel" id="duel" aria-live="polite">
+    <article class="fighter empty-fighter"><h2>Carregando placar…</h2></article>
+  </section>
+  <div class="actions" id="actions" hidden></div>
+  <section class="sec" id="metrics" hidden></section>
+  <section class="sec" id="chart" hidden></section>
+  <section class="sec" id="calendar" hidden></section>
+  <section class="sec" id="badges" hidden></section>
+  <section class="sec" id="history" hidden></section>
+  <footer id="foot"></footer>
+</div>
+
+<div class="sheet" id="sheet" hidden><div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" id="sheetCard"></div></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<canvas id="confetti" hidden></canvas>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+"use strict";
+// ---------- utilidades ----------
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pad = n => String(n).padStart(2, "0");
+const ymdLocal = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const dayNum = s => { const [y, m, d] = s.split("-").map(Number); return Date.UTC(y, m - 1, d) / 864e5; };
+const fromDay = n => new Date(n * 864e5).toISOString().slice(0, 10);
+const addDays = (s, n) => fromDay(dayNum(s) + n);
+const TODAY = ymdLocal(new Date());
+const fmtDate = s => { const [y, m, d] = s.split("-"); return `${d}/${m}`; };
+const fmtDateLong = s => { const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
+const isNum = v => typeof v === "number" && isFinite(v);
+const fmt = (v, dec = 1) => isNum(v) ? v.toLocaleString("pt-BR", { maximumFractionDigits: dec }) : "–";
+const signed = (v, dec = 1) => (v > 0 ? "+" : v < 0 ? "−" : "±") + fmt(Math.abs(v), dec);
+const parseDec = s => { const t = String(s ?? "").trim().replace(",", "."); if (!t) return null; const n = Number(t); return isFinite(n) ? n : NaN; };
+const clone = o => JSON.parse(JSON.stringify(o));
+
+// ---------- regras do jogo ----------
+const GOALS = { emagrecer: "Emagrecer", ganhar: "Ganhar massa", recomp: "Recomposição" };
+const METRICS = [
+  { k: "weight", label: "Peso", unit: "kg", dir: { emagrecer: -1, ganhar: 1, recomp: 0 } },
+  { k: "fat", label: "Gordura", unit: "%", dir: -1 },
+  { k: "muscle", label: "Massa muscular", unit: "kg", dir: 1 },
+  { k: "waist", label: "Cintura", unit: "cm", dir: -1 },
+  { k: "hip", label: "Quadril", unit: "cm", dir: { emagrecer: -1, ganhar: 0, recomp: 0 } },
+  { k: "chest", label: "Peito", unit: "cm", dir: { emagrecer: 0, ganhar: 1, recomp: 1 } },
+  { k: "arm", label: "Braço", unit: "cm", dir: { emagrecer: 0, ganhar: 1, recomp: 1 } },
+  { k: "thigh", label: "Coxa", unit: "cm", dir: { emagrecer: -1, ganhar: 1, recomp: 0 } },
+  { k: "calf", label: "Panturrilha", unit: "cm", dir: { emagrecer: 0, ganhar: 1, recomp: 0 } },
+];
+const dirOf = (m, goal) => typeof m.dir === "number" ? m.dir : (m.dir[goal] ?? 0);
+const MASCOTS = ["🦍", "🐯", "🦁", "🐺", "🐻", "🦊", "🐼", "🐸", "🦈", "🦅", "🐙", "🦄", "🐝", "🐢"];
+// Cada nível coloca mais um par de anilhas na barra (olímpica de 20 kg).
+const PLATES = [10, 15, 20, 25, 25, 25, 25, 25, 25, 25, 25, 25];
+const PLATE_COLOR = { 10: "var(--p10)", 15: "var(--p15)", 20: "var(--p20)", 25: "var(--p25)" };
+const needXp = L => 50 * (L - 1) * (L + 2);
+const loadOf = L => 20 + 2 * PLATES.slice(0, Math.min(L - 1, PLATES.length)).reduce((a, b) => a + b, 0);
+function levelOf(xp) { let L = 1; while (xp >= needXp(L + 1)) L++; return { level: L, from: needXp(L), to: needXp(L + 1), load: loadOf(L), nextLoad: loadOf(L + 1) }; }
+const XP = { measure: 100, checkin: 25, improve: 20, badge: 50 };
+
+const sortedMs = p => (p.measurements || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+const firstVal = (ms, k) => { for (const m of ms) if (isNum(m[k])) return m[k]; return null; };
+const lastVal = (ms, k) => { for (let i = ms.length - 1; i >= 0; i--) if (isNum(ms[i][k])) return ms[i][k]; return null; };
+const prevVal = (ms, k) => { let n = 0; for (let i = ms.length - 1; i >= 0; i--) if (isNum(ms[i][k])) { if (n++ === 1) return ms[i][k]; } return null; };
+const mondayOf = s => { const n = dayNum(s); const wd = (new Date(n * 864e5).getUTCDay() + 6) % 7; return n - wd; };
+
+const BADGES = [
+  { id: "first", glyph: "1ª", name: "Primeira pesagem", desc: "Registrou a primeira medição.", test: c => c.ms.length >= 1 },
+  { id: "fortnight", glyph: "15d", name: "Quinzena firme", desc: "Duas medições com 12 dias ou mais de intervalo.", test: c => c.ms.length >= 2 && dayNum(c.ms[c.ms.length - 1].date) - dayNum(c.ms[0].date) >= 12 },
+  { id: "waist", glyph: "−2", name: "Cintura em queda", desc: "2 cm a menos de cintura desde o início.", test: c => c.delta("waist") <= -2 },
+  { id: "scale", glyph: "kg", name: "Balança a favor", desc: "Peso 2 kg na direção do objetivo (1,5 kg para quem quer ganhar massa).", test: c => c.goal === "emagrecer" ? c.delta("weight") <= -2 : c.goal === "ganhar" ? c.delta("weight") >= 1.5 : false },
+  { id: "fat", glyph: "%", name: "Queima-gordura", desc: "1 ponto a menos de % de gordura.", test: c => c.delta("fat") <= -1 },
+  { id: "arm", glyph: "B+", name: "Braço de aço", desc: "1 cm a mais de braço.", test: c => c.delta("arm") >= 1 },
+  { id: "triple", glyph: "3↑", name: "Tripla vitória", desc: "3 medidas melhoraram de uma medição para a seguinte.", test: c => c.bestJump >= 3 },
+  { id: "week4", glyph: "4x", name: "Semana cheia", desc: "4 treinos marcados na mesma semana.", test: c => Math.max(0, ...c.weeks.values()) >= 4 },
+  { id: "streak", glyph: "3s", name: "Constância", desc: "3 semanas seguidas com 3 treinos ou mais.", test: c => c.bestStreak >= 3 },
+  { id: "club20", glyph: "20", name: "Clube dos 20", desc: "20 treinos marcados.", test: c => c.checkins.length >= 20 },
+  { id: "duo", glyph: "2", name: "Dupla dinâmica", desc: "Mediu no mesmo dia que o parceiro.", test: c => !!c.other && c.ms.some(m => (c.other.measurements || []).some(o => o.date === m.date)) },
+];
+
+function stats(p, other) {
+  const ms = sortedMs(p);
+  const goal = p.goal || "recomp";
+  let improvements = 0, bestJump = 0;
+  for (let i = 1; i < ms.length; i++) {
+    let jump = 0;
+    for (const m of METRICS) {
+      const d = dirOf(m, goal), a = ms[i - 1][m.k], b = ms[i][m.k];
+      if (d && isNum(a) && isNum(b) && d * (b - a) > 0) jump++;
+    }
+    improvements += jump; bestJump = Math.max(bestJump, jump);
+  }
+  const checkins = [...new Set(p.checkins || [])].filter(d => d <= TODAY).sort();
+  const weeks = new Map();
+  for (const d of checkins) { const w = mondayOf(d); weeks.set(w, (weeks.get(w) || 0) + 1); }
+  // sequência: semanas seguidas com 3+ treinos; a semana atual só conta se já bateu a meta
+  const thisWeek = mondayOf(TODAY);
+  let w = (weeks.get(thisWeek) || 0) >= 3 ? thisWeek : thisWeek - 7, streak = 0;
+  while ((weeks.get(w) || 0) >= 3) { streak++; w -= 7; }
+  let bestStreak = 0, run = 0;
+  [...weeks.keys()].sort((a, b) => a - b).forEach((k, i, arr) => { run = (weeks.get(k) >= 3) ? ((i && arr[i - 1] === k - 7 && weeks.get(arr[i - 1]) >= 3) ? run + 1 : 1) : 0; bestStreak = Math.max(bestStreak, run); });
+  const delta = k => { const a = firstVal(ms, k), b = lastVal(ms, k); return isNum(a) && isNum(b) ? b - a : 0; };
+  let score = 0;
+  for (const m of METRICS) {
+    const d = dirOf(m, goal), a = firstVal(ms, m.k), b = lastVal(ms, m.k);
+    if (d && isNum(a) && isNum(b) && a) score += d * (b - a) / a * 100;
+  }
+  const ctx = { ms, goal, checkins, weeks, bestStreak, bestJump, delta, other };
+  const badges = BADGES.filter(b => b.test(ctx)).map(b => b.id);
+  const xp = ms.length * XP.measure + checkins.length * XP.checkin + improvements * XP.improve + badges.length * XP.badge;
+  const last = ms[ms.length - 1];
+  const nextIn = last ? dayNum(addDays(last.date, 15)) - dayNum(TODAY) : null;
+  return { ms, goal, improvements, checkins, weeks, streak, score: Math.round(score * 10) / 10, badges, xp, nextIn, ...levelOf(xp) };
+}
+
+// ---------- estado ----------
+const cfg = window.CARGA_CONFIG || {};
+const configured = !!(cfg.url && cfg.anonKey && !/SEU-PROJETO|SUA-ANON/.test(cfg.url + cfg.anonKey));
+const S = { mode: "loading", me: null, email: "", players: {}, view: null, chart: "weight", loaded: false, error: "", armed: null, sent: "" };
+let sb = null;
+
+function ordered() {
+  return Object.entries(S.players).map(([id, p]) => ({ id, ...p })).sort((a, b) => String(a.createdAt || "").localeCompare(String(b.createdAt || "")) || a.id.localeCompare(b.id));
+}
+function colorOf(id) { const i = ordered().findIndex(p => p.id === id); return ["var(--pa)", "var(--pb)", "var(--p15)", "var(--p10)"][Math.max(0, i) % 4]; }
+function otherOf(id) { return ordered().find(p => p.id !== id) || null; }
+function statsOf(id) { const p = S.players[id]; return p ? stats(p, otherOf(id)) : null; }
+
+// ---------- dados ----------
+async function boot() {
+  render();
+  if (!configured || !window.supabase) return startDemo(true);
+  sb = window.supabase.createClient(cfg.url, cfg.anonKey);
+  sb.auth.onAuthStateChange((ev, session) => {
+    if (session && !S.me) start(session);
+    if (ev === "SIGNED_OUT") location.reload();
+  });
+  const { data } = await sb.auth.getSession();
+  if (data.session) start(data.session);
+  else if (!S.me) { S.mode = "login"; render(); }
+}
+
+async function start(session) {
+  S.mode = "live"; S.me = session.user.id; S.email = session.user.email || "";
+  if (location.hash.includes("access_token")) history.replaceState(null, "", location.pathname);
+  await loadPlayers();
+  sb.channel("players-live").on("postgres_changes", { event: "*", schema: "public", table: "players" }, () => loadPlayers()).subscribe();
+}
+
+async function loadPlayers() {
+  const { data, error } = await sb.from("players").select("*");
+  if (error) { S.error = error.message; S.loaded = true; render(); return; }
+  const ps = {};
+  for (const r of data) ps[r.id] = { nick: r.nick, mascot: r.mascot, goal: r.goal, height: r.height, measurements: r.measurements || [], checkins: r.checkins || [], createdAt: r.created_at };
+  S.players = ps; S.loaded = true; S.error = "";
+  render();
+}
+
+let writing = Promise.resolve();
+function saveMe(p) {
+  S.players[S.me] = p; render();
+  if (S.mode === "demo") return Promise.resolve(true);
+  const row = { id: S.me, nick: p.nick, mascot: p.mascot, goal: p.goal, height: p.height, measurements: p.measurements, checkins: p.checkins };
+  writing = writing.then(async () => {
+    const { error } = await sb.from("players").upsert(row);
+    if (error) {
+      toast(/row-level security/i.test(error.message) ? "Seu e-mail ainda não está liberado no banco. Veja o passo 3 do README." : "Não foi possível salvar: " + error.message);
+      await loadPlayers(); return false;
+    }
+    return true;
+  });
+  return writing;
+}
+
+function startDemo(notConfigured) {
+  S.mode = "demo"; S.loaded = true; S.notConfigured = !!notConfigured;
+  const d0 = addDays(TODAY, -15);
+  const ck = (seed) => { const out = []; for (let i = 0; i < 40; i++) if ((i * 7 + seed) % 5 < 3) out.push(addDays(TODAY, -i)); return out; };
+  S.players = {
+    demoA: { nick: "Leo", mascot: "🦍", goal: "ganhar", height: 178, createdAt: "1", checkins: ck(2),
+      measurements: [
+        { id: "a1", date: d0, weight: 82.4, fat: 21.5, waist: 91, hip: 101, chest: 103, arm: 36, thigh: 58, calf: 38 },
+        { id: "a2", date: TODAY, weight: 83.1, fat: 20.6, waist: 89.5, hip: 100.5, chest: 104, arm: 36.8, thigh: 58.5, calf: 38.2 }] },
+    demoB: { nick: "Bia", mascot: "🦊", goal: "emagrecer", height: 165, createdAt: "2", checkins: ck(4),
+      measurements: [
+        { id: "b1", date: d0, weight: 68.2, fat: 29.8, waist: 76, hip: 103, arm: 29, thigh: 59, calf: 35 },
+        { id: "b2", date: TODAY, weight: 66.9, fat: 28.7, waist: 74, hip: 101.5, arm: 28.8, thigh: 58, calf: 34.8 }] },
+  };
+  S.me = "demoA"; S.view = "demoA";
+  render();
+}
+
+// ---------- desenho ----------
+function barbell(L, color) {
+  const plates = PLATES.slice(0, Math.min(L - 1, 9)).slice().sort((a, b) => b - a);
+  const dims = { 10: [7, 44], 15: [8, 54], 20: [9, 66], 25: [10, 76] };
+  const W = 260, cy = 44, cL = 86, cR = 174, room = 64;
+  const total = plates.reduce((s, w) => s + dims[w][0] + 1.5, 0);
+  const k = total > room ? room / total : 1;
+  let out = `<svg class="barbell" viewBox="0 0 ${W} 88" role="img" aria-label="Barra com ${loadOf(L)} kg">`;
+  out += `<rect x="14" y="${cy - 3}" width="${W - 28}" height="6" rx="3" fill="var(--bar)"/>`;
+  out += `<rect x="${cL}" y="${cy - 2}" width="${cR - cL}" height="4" fill="var(--muted)" opacity=".35"/>`;
+  out += `<rect x="${cL - 4}" y="${cy - 8}" width="4" height="16" rx="1" fill="var(--bar)"/><rect x="${cR}" y="${cy - 8}" width="4" height="16" rx="1" fill="var(--bar)"/>`;
+  let xl = cL - 5, xr = cR + 5;
+  for (const w of plates) {
+    const pw = dims[w][0] * k, h = dims[w][1];
+    xl -= pw;
+    out += `<rect x="${xl.toFixed(1)}" y="${cy - h / 2}" width="${pw.toFixed(1)}" height="${h}" rx="2" fill="${PLATE_COLOR[w]}"/>`;
+    out += `<rect x="${xr.toFixed(1)}" y="${cy - h / 2}" width="${pw.toFixed(1)}" height="${h}" rx="2" fill="${PLATE_COLOR[w]}"/>`;
+    xl -= 1.5 * k; xr += pw + 1.5 * k;
+  }
+  if (!plates.length) out += `<text x="${W / 2}" y="${cy + 26}" text-anchor="middle" font-size="11" fill="var(--muted)">barra vazia, bora carregar</text>`;
+  return out + `</svg>`;
+}
+
+function sparkline(ms, k, color) {
+  const pts = ms.filter(m => isNum(m[k]));
+  if (pts.length < 2) return `<svg class="spark" viewBox="0 0 96 26"></svg>`;
+  const vs = pts.map(m => m[k]), lo = Math.min(...vs), hi = Math.max(...vs), r = hi - lo || 1;
+  const t0 = dayNum(pts[0].date), t1 = dayNum(pts[pts.length - 1].date), tr = t1 - t0 || 1;
+  const xy = pts.map(m => [4 + (dayNum(m.date) - t0) / tr * 88, 22 - (m[k] - lo) / r * 18]);
+  const [ex, ey] = xy[xy.length - 1];
+  return `<svg class="spark" viewBox="0 0 96 26" aria-hidden="true"><polyline points="${xy.map(p => p.map(n => n.toFixed(1)).join(",")).join(" ")}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="3" fill="${color}"/></svg>`;
+}
+
+function chartSvg(k) {
+  const series = ordered().map(p => {
+    const ms = sortedMs(p).filter(m => isNum(m[k]));
+    const base = ms.length ? ms[0][k] : null;
+    return { p, color: colorOf(p.id), pts: base ? ms.map(m => ({ t: dayNum(m.date), v: (m[k] - base) / base * 100, raw: m[k], date: m.date })) : [] };
+  }).filter(s => s.pts.length);
+  if (!series.length) return `<p class="note">Nenhum dado de ${esc(METRICS.find(m => m.k === k).label.toLowerCase())} ainda.</p>`;
+  const W = 680, H = 270, ml = 48, mr = 84, mt = 16, mb = 34;
+  const all = series.flatMap(s => s.pts);
+  let t0 = Math.min(...all.map(p => p.t)), t1 = Math.max(...all.map(p => p.t));
+  if (t0 === t1) { t0 -= 7; t1 += 7; }
+  let v0 = Math.min(0, ...all.map(p => p.v)), v1 = Math.max(0, ...all.map(p => p.v));
+  if (v1 - v0 < 2) { const m = (v0 + v1) / 2; v0 = m - 1; v1 = m + 1; }
+  const steps = [0.25, 0.5, 1, 2, 2.5, 5, 10, 20, 25, 50];
+  const step = steps.find(s => (v1 - v0) / s <= 5) || 100;
+  v0 = Math.floor(v0 / step) * step; v1 = Math.ceil(v1 / step) * step;
+  const x = t => ml + (t - t0) / (t1 - t0) * (W - ml - mr);
+  const y = v => mt + (v1 - v) / (v1 - v0) * (H - mt - mb);
+  let g = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Variação percentual de ${esc(k)}">`;
+  for (let v = v0; v <= v1 + 1e-9; v += step) {
+    const yy = y(v).toFixed(1);
+    g += `<line x1="${ml}" x2="${W - mr}" y1="${yy}" y2="${yy}" stroke="var(--line)" stroke-width="${Math.abs(v) < 1e-9 ? 2 : 1}"/>`;
+    g += `<text x="${ml - 8}" y="${yy}" dy="4" text-anchor="end" font-size="11" fill="var(--muted)">${v > 0 ? "+" : ""}${fmt(v, 2)}%</text>`;
+  }
+  const dates = [...new Set(all.map(p => p.t))].sort((a, b) => a - b);
+  const every = Math.ceil(dates.length / 6);
+  dates.forEach((t, i) => { if (i % every === 0 || i === dates.length - 1) g += `<text x="${x(t).toFixed(1)}" y="${H - 10}" text-anchor="middle" font-size="11" fill="var(--muted)">${fmtDate(fromDay(t))}</text>`; });
+  const ends = [];
+  for (const s of series) {
+    const d = s.pts.map((p, i) => `${i ? "L" : "M"}${x(p.t).toFixed(1)},${y(p.v).toFixed(1)}`).join(" ");
+    g += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`;
+    for (const p of s.pts) g += `<circle cx="${x(p.t).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="4.5" fill="var(--surface)" stroke="${s.color}" stroke-width="2.5"><title>${fmtDateLong(p.date)}: ${fmt(p.raw)} (${signed(p.v)}%)</title></circle>`;
+    const last = s.pts[s.pts.length - 1];
+    ends.push({ y: y(last.v), x: x(last.t), text: `${signed(last.v)}%`, color: s.color });
+  }
+  ends.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 16) ends[i].y = ends[i - 1].y + 16;
+  for (const e of ends) g += `<text x="${(e.x + 10).toFixed(1)}" y="${e.y.toFixed(1)}" dy="4" font-size="13" font-weight="700" fill="${e.color}">${e.text}</text>`;
+  return g + `</svg>`;
+}
+
+// ---------- render ----------
+function render() {
+  renderWho(); renderBanner(); renderLogin(); renderDuel(); renderActions();
+  const show = (S.mode === "live" || S.mode === "demo") && S.loaded && ordered().length > 0;
+  for (const id of ["metrics", "chart", "calendar", "badges", "history"]) $("#" + id).hidden = !show;
+  if (show) {
+    if (!S.view || !S.players[S.view]) S.view = S.players[S.me] ? S.me : ordered()[0].id;
+    renderMetrics(); renderChart(); renderCalendar(); renderBadges(); renderHistory();
+  }
+  $("#foot").innerHTML = S.mode === "live"
+    ? `Conectado como ${esc(S.email)} · <button type="button" data-act="logout">Sair</button>`
+    : S.mode === "demo" && !S.notConfigured ? `<button type="button" data-act="exitdemo">Sair da demonstração</button>` : "";
+}
+
+function renderWho() {
+  const me = S.players[S.me];
+  $("#who").innerHTML = S.mode === "live" && me ? `<span>Treinando como</span> <b>${esc(me.mascot || "")} ${esc(me.nick)}</b>` : "";
+}
+
+function renderBanner() {
+  const b = $("#banner");
+  let html = "";
+  if (S.mode === "demo") html = S.notConfigured
+    ? `<div class="note"><b>Modo demonstração.</b> Leo e Bia são dados de exemplo e nada é salvo. Para usar de verdade, preencha o <b>config.js</b> com os dados do Supabase (o README explica em 5 minutos).</div>`
+    : `<div class="note"><b>Modo demonstração.</b> Leo e Bia são dados de exemplo; pode clicar em tudo, nada é salvo.</div>`;
+  else if (S.error) html = `<div class="note"><b>Não consegui ler o banco.</b> ${esc(S.error)}</div>`;
+  else if (S.mode === "live" && S.loaded && !S.players[S.me]) html = "";
+  b.innerHTML = html; b.hidden = !html;
+}
+
+function renderLogin() {
+  const el = $("#login");
+  el.hidden = S.mode !== "login";
+  if (el.hidden) return;
+  el.innerHTML = `<div class="login">
+    <div>
+      <h2>Entre no placar</h2>
+      <p>Sem senha: digite seu e-mail e a gente manda um link de acesso. Cada um tem seu perfil, sua barra e suas conquistas.</p>
+      <p><button type="button" class="btn small" data-act="demo">Ver como funciona com dados de exemplo</button></p>
+    </div>
+    <form class="form" id="loginForm">
+      <div class="field"><label for="lg-email">Seu e-mail</label><input id="lg-email" type="email" required autocomplete="email" placeholder="voce@email.com" value="${esc(S.sent)}"></div>
+      <button class="btn primary" type="submit" id="lg-btn">Enviar link de acesso</button>
+      ${S.sent ? `<p class="note">Link enviado para <b>${esc(S.sent)}</b>. Abra o e-mail neste aparelho e toque no link.</p>` : ""}
+    </form>
+  </div>`;
+}
+
+function fighterCard(p, side) {
+  if (!p) {
+    return `<article class="fighter empty-fighter"><h2>Vaga aberta</h2><p>Mande o link deste site para a sua dupla. Quando ela entrar com o e-mail dela, o perfil aparece aqui.</p></article>`;
+  }
+  const st = statsOf(p.id), isMe = p.id === S.me;
+  const pct = Math.min(100, (st.xp - st.from) / (st.to - st.from) * 100);
+  const next = st.nextIn === null ? "registre já" : st.nextIn <= 0 ? "hoje!" : st.nextIn === 1 ? "amanhã" : `em ${st.nextIn} dias`;
+  return `<article class="fighter" style="--pc:${colorOf(p.id)}">
+    <div class="f-top">
+      <div class="mascot" aria-hidden="true">${esc(p.mascot || "🏋️")}</div>
+      <div class="f-name"><h2>${esc(p.nick)}${isMe ? `<span class="tag">você</span>` : ""}</h2><p>Objetivo: ${esc(GOALS[p.goal] || "Recomposição")}${p.height ? ` · ${fmt(p.height, 0)} cm` : ""}</p></div>
+      ${isMe ? `<button class="btn small" type="button" data-act="profile">Editar</button>` : ""}
+    </div>
+    <div class="loadline"><span class="load num">${st.load}<small>kg</small></span><span class="lvl">Nível ${st.level}</span></div>
+    ${barbell(st.level)}
+    <div class="xpbar" role="progressbar" aria-valuemin="${st.from}" aria-valuemax="${st.to}" aria-valuenow="${st.xp}" aria-label="Experiência"><i style="width:${pct.toFixed(1)}%"></i></div>
+    <p class="xptext num">${st.xp} XP · faltam ${st.to - st.xp} para a barra de ${st.nextLoad} kg</p>
+    <dl class="fstats num">
+      <div><dt>Evolução</dt><dd>${signed(st.score)} pts</dd></div>
+      <div><dt>Treinos</dt><dd>${st.checkins.length}</dd></div>
+      <div><dt>Sequência</dt><dd>${st.streak} sem.</dd></div>
+      <div><dt>Medir de novo</dt><dd>${next}</dd></div>
+    </dl>
+  </article>`;
+}
+
+function renderDuel() {
+  const el = $("#duel");
+  if (S.mode === "login") { el.hidden = true; return; }
+  el.hidden = false;
+  if (!S.loaded) { el.innerHTML = `<article class="fighter empty-fighter"><h2>Carregando placar…</h2></article>`; return; }
+  const ps = ordered();
+  if (!ps.length) { el.innerHTML = `<article class="fighter empty-fighter"><h2>Ninguém na barra ainda</h2><p>Crie o primeiro perfil abaixo.</p></article>`; return; }
+  const [a, b] = ps;
+  let mid = `<div class="vs"><span class="big">VS</span><p>Quem estiver mais perto do próprio objetivo lidera.</p></div>`;
+  if (a && b) {
+    const sa = statsOf(a.id), sb2 = statsOf(b.id);
+    const lead = sa.score === sb2.score ? null : sa.score > sb2.score ? a : b;
+    mid = `<div class="vs"><span class="big">VS</span><p>${lead ? `<b>${esc(lead.nick)}</b> lidera por ${fmt(Math.abs(sa.score - sb2.score))} pts de evolução` : "Empate técnico na evolução"}</p></div>`;
+  }
+  el.innerHTML = fighterCard(a, "a") + mid + fighterCard(b, "b");
+}
+
+function renderActions() {
+  const el = $("#actions");
+  const ready = (S.mode === "live" || S.mode === "demo") && S.loaded;
+  el.hidden = !ready;
+  if (!ready) return;
+  const me = S.players[S.me];
+  if (!me) {
+    el.innerHTML = `<div class="note" style="width:100%"><b>Falta o seu perfil.</b> Escolha um apelido e um mascote para entrar no duelo. <button class="btn primary small" type="button" data-act="profile" style="margin-left:8px">Criar meu perfil</button></div>`;
+    return;
+  }
+  const trained = (me.checkins || []).includes(TODAY);
+  el.innerHTML = `<button class="btn primary" type="button" data-act="measure">Registrar medidas</button>
+    <button class="btn ${trained ? "" : "go"}" type="button" data-act="checkin" aria-pressed="${trained}">${trained ? "Treino de hoje marcado ✓" : "Treinei hoje (+25 XP)"}</button>
+    <span class="hint">Medição vale 100 XP, cada medida que melhora vale mais 20.</span>`;
+}
+
+function playerTabs() {
+  return `<div class="chips" role="group" aria-label="Escolher pessoa">${ordered().map(p => `<button class="chip" type="button" data-act="view" data-id="${esc(p.id)}" aria-pressed="${p.id === S.view}">${esc(p.mascot || "")} ${esc(p.nick)}</button>`).join("")}</div>`;
+}
+
+function renderMetrics() {
+  const p = S.players[S.view], st = statsOf(S.view), ms = st.ms, color = colorOf(S.view);
+  const rows = METRICS.filter(m => ms.some(x => isNum(x[m.k]))).map(m => {
+    const a = firstVal(ms, m.k), pv = prevVal(ms, m.k), l = lastVal(ms, m.k), d = dirOf(m, st.goal);
+    const tot = isNum(a) && isNum(l) ? l - a : null;
+    const cls = !tot || !d ? "" : d * tot > 0 ? "good" : "bad";
+    return `<tr><td><b>${m.label}</b></td><td class="r num">${fmt(a)} ${m.unit}</td><td class="r num">${fmt(pv)}</td><td class="r num"><b>${fmt(l)}</b></td>
+      <td class="r num">${tot === null || ms.length < 2 ? "–" : `<span class="delta ${cls}">${signed(tot)} ${m.unit}</span>`}</td><td>${sparkline(ms, m.k, color)}</td></tr>`;
+  });
+  const w = lastVal(ms, "weight");
+  if (p.height && isNum(w)) {
+    const imc = w / Math.pow(p.height / 100, 2);
+    const w0 = firstVal(ms, "weight"), imc0 = w0 / Math.pow(p.height / 100, 2);
+    rows.push(`<tr><td><b>IMC</b></td><td class="r num">${fmt(imc0)}</td><td class="r num">–</td><td class="r num"><b>${fmt(imc)}</b></td><td class="r num">${ms.length < 2 ? "–" : `<span class="delta">${signed(imc - imc0)}</span>`}</td><td></td></tr>`);
+  }
+  $("#metrics").innerHTML = `<div class="sec-head"><div><h2>Medidas de ${esc(p.nick)}</h2><p>Verde é movimento a favor do objetivo (${esc(GOALS[st.goal]).toLowerCase()}); vermelho é contra.</p></div>${playerTabs()}</div>
+    <div class="panel">${rows.length ? `<div class="scroll"><table><thead><tr><th>Medida</th><th class="r">Início</th><th class="r">Anterior</th><th class="r">Atual</th><th class="r">Total</th><th>Tendência</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`
+      : `<p class="note">${p.nick ? esc(p.nick) + " ainda" : "Ainda"} não tem medições. ${S.view === S.me ? "Comece pela de 15 dias atrás: dá para escolher a data no formulário." : ""}</p>`}</div>`;
+}
+
+function renderChart() {
+  const avail = METRICS.filter(m => ordered().some(p => (p.measurements || []).some(x => isNum(x[m.k]))));
+  if (!avail.length) { $("#chart").hidden = true; return; }
+  if (!avail.some(m => m.k === S.chart)) S.chart = avail[0].k;
+  $("#chart").innerHTML = `<div class="sec-head"><div><h2>Evolução comparada</h2><p>Variação percentual desde a primeira medição de cada um, para comparar de igual para igual.</p></div>
+    <div class="chips" role="group" aria-label="Escolher medida">${avail.map(m => `<button class="chip" type="button" data-act="chart" data-k="${m.k}" aria-pressed="${m.k === S.chart}">${m.label}</button>`).join("")}</div></div>
+    <div class="panel chart"><div class="legend">${ordered().map(p => `<span><i style="background:${colorOf(p.id)}"></i>${esc(p.nick)}</span>`).join("")}</div>${chartSvg(S.chart)}</div>`;
+}
+
+function renderCalendar() {
+  const end = mondayOf(TODAY) + 6, start = end - 7 * 12 + 1;
+  const wds = ["Seg", "", "Qua", "", "Sex", "", "Dom"];
+  const blocks = ordered().map(p => {
+    const set = new Set(p.checkins || []), meas = new Set((p.measurements || []).map(m => m.date));
+    const st = statsOf(p.id), isMe = p.id === S.me;
+    let cells = "";
+    for (let r = 0; r < 7; r++) {
+      cells += `<span class="wd">${wds[r]}</span>`;
+      for (let c = 0; c < 12; c++) {
+        const d = fromDay(start + c * 7 + r), fut = d > TODAY;
+        const cls = ["cell", set.has(d) ? "on" : "", meas.has(d) ? "meas" : "", d === TODAY ? "today" : "", fut ? "future" : ""].join(" ");
+        const label = `${fmtDateLong(d)}${set.has(d) ? ", treinou" : ""}${meas.has(d) ? ", mediu" : ""}`;
+        cells += isMe && !fut ? `<button type="button" class="${cls}" data-act="ck" data-d="${d}" aria-label="${label}" aria-pressed="${set.has(d)}" title="${label}"></button>` : `<span class="${cls}" title="${label}"></span>`;
+      }
+    }
+    const thisWeek = st.weeks.get(mondayOf(TODAY)) || 0;
+    return `<div class="panel" style="--pc:${colorOf(p.id)}"><div class="cal-title"><span>${esc(p.mascot || "")} ${esc(p.nick)}</span><small class="num">${thisWeek}/3 nesta semana · ${st.checkins.length} no total</small></div><div class="cal">${cells}</div></div>`;
+  });
+  $("#calendar").innerHTML = `<div class="sec-head"><div><h2>Frequência</h2><p>Últimas 12 semanas. Toque nos seus dias para marcar ou desmarcar treinos. Meta: 3 por semana para manter a sequência.</p></div></div>
+    <div class="cals">${blocks.join("")}</div>
+    <div class="cal-legend"><span>■ dia de treino</span><span>● dia de medição</span><span>□ hoje com contorno</span></div>`;
+}
+
+function renderBadges() {
+  const ps = ordered(), won = Object.fromEntries(ps.map(p => [p.id, new Set(statsOf(p.id).badges)]));
+  $("#badges").innerHTML = `<div class="sec-head"><div><h2>Conquistas</h2><p>Cada conquista vale ${XP.badge} XP. Os mascotes mostram quem já desbloqueou.</p></div></div>
+    <div class="badges">${BADGES.map(b => {
+      const holders = ps.filter(p => won[p.id].has(b.id));
+      return `<div class="badge ${holders.length ? "won" : ""}"><div class="medal" aria-hidden="true">${b.glyph}</div><div><h3>${b.name}</h3><p>${b.desc}</p><div class="holders">${holders.map(p => `<span title="${esc(p.nick)}">${esc(p.mascot || "★")}</span>`).join("") || `<p>Ninguém ainda</p>`}</div></div></div>`;
+    }).join("")}</div>`;
+}
+
+function renderHistory() {
+  const p = S.players[S.view], isMe = S.view === S.me;
+  const ms = sortedMs(p).reverse();
+  $("#history").innerHTML = `<div class="sec-head"><div><h2>Histórico de ${esc(p.nick)}</h2><p>${ms.length} ${ms.length === 1 ? "medição" : "medições"}${isMe ? ". Dá para corrigir ou apagar as suas." : "."}</p></div>${playerTabs()}</div>
+    <div class="panel hist">${ms.length ? ms.map(m => `<div class="hrow">
+      <div><div class="hdate num">${fmtDate(m.date)}</div><small style="color:var(--muted)">${m.date.slice(0, 4)}</small></div>
+      <div class="hvals num">${METRICS.filter(x => isNum(m[x.k])).map(x => `<span>${x.label} <b>${fmt(m[x.k])} ${x.unit}</b></span>`).join("")}${m.note ? `<span>“${esc(m.note)}”</span>` : ""}</div>
+      <div class="hbtns">${isMe ? `<button class="btn small" type="button" data-act="edit" data-id="${esc(m.id)}">Corrigir</button>
+        <button class="btn small danger" type="button" data-act="del" data-id="${esc(m.id)}">${S.armed === m.id ? "Confirmar" : "Apagar"}</button>` : ""}</div>
+    </div>`).join("") : `<p class="note">Sem medições ainda.</p>`}</div>`;
+}
+
+// ---------- formulários ----------
+function openSheet(html) { $("#sheetCard").innerHTML = html; $("#sheet").hidden = false; const f = $("#sheetCard input:not([type=radio]), #sheetCard input"); if (f) f.focus(); }
+function closeSheet() { $("#sheet").hidden = true; $("#sheetCard").innerHTML = ""; }
+
+function profileSheet() {
+  const me = S.players[S.me] || {};
+  const mascot = me.mascot || MASCOTS[ordered().length % MASCOTS.length];
+  openSheet(`<h2 id="sheetTitle">${S.players[S.me] ? "Editar perfil" : "Criar perfil"}</h2>
+    <form class="form" id="profileForm">
+      <div class="field"><label for="pf-nick">Apelido no placar</label><input id="pf-nick" required maxlength="24" value="${esc(me.nick || "")}" placeholder="Ex.: Doug"></div>
+      <div class="field"><span class="lab">Mascote</span><div class="mascots">${MASCOTS.map((m, i) => `<label><input type="radio" name="pf-mascot" id="pf-m${i}" value="${m}" ${m === mascot ? "checked" : ""}><span>${m}</span></label>`).join("")}</div></div>
+      <div class="field"><span class="lab">Objetivo</span><div class="seg">${Object.entries(GOALS).map(([k, v]) => `<label><input type="radio" name="pf-goal" id="pf-g-${k}" value="${k}" ${(me.goal || "recomp") === k ? "checked" : ""}><span>${v}</span></label>`).join("")}</div>
+        <small style="color:var(--muted)">Define o que conta como progresso: quem quer emagrecer ganha pontos perdendo peso; quem quer massa, ganhando braço.</small></div>
+      <div class="field" style="max-width:200px"><label for="pf-height">Altura</label><div class="unit"><input id="pf-height" inputmode="decimal" value="${me.height ?? ""}" placeholder="170"><span>cm</span></div></div>
+      <div class="sheet-foot"><button class="btn" type="button" data-act="close">Cancelar</button><button class="btn primary" type="submit">Salvar perfil</button></div>
+    </form>`);
+}
+
+function measureSheet(editId) {
+  const me = S.players[S.me], ms = sortedMs(me);
+  const cur = editId ? ms.find(m => m.id === editId) : null;
+  const ph = k => { const v = lastVal(ms, k); return isNum(v) ? `última: ${fmt(v)}` : ""; };
+  openSheet(`<h2 id="sheetTitle">${cur ? "Corrigir medição" : "Registrar medidas"}</h2>
+    <form class="form" id="measureForm" data-edit="${esc(editId || "")}">
+      <div class="field" style="max-width:220px"><label for="mf-date">Data da medição</label><input id="mf-date" type="date" required max="${TODAY}" value="${cur ? cur.date : TODAY}"></div>
+      <div class="grid2">${METRICS.map(m => `<div class="field"><label for="mf-${m.k}">${m.label}</label><div class="unit"><input id="mf-${m.k}" inputmode="decimal" autocomplete="off" value="${cur && isNum(cur[m.k]) ? String(cur[m.k]).replace(".", ",") : ""}" placeholder="${ph(m.k)}"><span>${m.unit}</span></div></div>`).join("")}</div>
+      <div class="field"><label for="mf-note">Observação (opcional)</label><input id="mf-note" maxlength="120" value="${esc(cur?.note || "")}" placeholder="Ex.: medido em jejum, bioimpedância da academia"></div>
+      <p style="margin:0;color:var(--muted);font-size:13px">Preencha só o que mediu. Se já existir medição nessa data, os valores são somados a ela.</p>
+      <div class="sheet-foot"><button class="btn" type="button" data-act="close">Cancelar</button><button class="btn primary" type="submit">Salvar medição</button></div>
+    </form>`);
+}
+
+async function commit(next, baseMsg) {
+  const before = S.players[S.me] ? statsOf(S.me) : null;
+  const ok = await saveMe(next);
+  if (ok === false) return;
+  const after = statsOf(S.me);
+  const gained = after.xp - (before ? before.xp : 0);
+  if (baseMsg) toast(`${baseMsg}${gained > 0 ? ` +${gained} XP` : ""}`);
+  if (before && after.level > before.level) { toast(`Subiu de nível! Barra com ${after.load} kg`, "lvlup"); confetti(); }
+  const newB = before ? after.badges.filter(b => !before.badges.includes(b)) : [];
+  for (const id of newB) { const b = BADGES.find(x => x.id === id); toast(`Conquista desbloqueada: ${b.name}`); }
+  if (newB.length && !(before && after.level > before.level)) confetti(0.5);
+}
+
+document.addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = e.target;
+  if (f.id === "loginForm") {
+    const email = $("#lg-email").value.trim(); if (!email) return;
+    $("#lg-btn").disabled = true;
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+    if (error) { toast("Não consegui enviar: " + error.message); $("#lg-btn").disabled = false; return; }
+    S.sent = email; render();
+  }
+  if (f.id === "profileForm") {
+    const nick = $("#pf-nick").value.trim(); if (!nick) return;
+    const h = parseDec($("#pf-height").value);
+    const cur = S.players[S.me] ? clone(S.players[S.me]) : { measurements: [], checkins: [], createdAt: new Date().toISOString() };
+    Object.assign(cur, { nick, mascot: (f.querySelector("[name=pf-mascot]:checked") || {}).value || "🏋️", goal: (f.querySelector("[name=pf-goal]:checked") || {}).value || "recomp", height: isNum(h) ? h : null });
+    const isNew = !S.players[S.me];
+    closeSheet(); S.view = S.me;
+    await commit(cur, isNew ? "Perfil criado! Agora registre a medição de 15 dias atrás e a de hoje." : "Perfil atualizado.");
+  }
+  if (f.id === "measureForm") {
+    const date = $("#mf-date").value;
+    if (!date || date > TODAY) { toast("Escolha uma data até hoje."); return; }
+    const vals = {}; let bad = false;
+    for (const m of METRICS) { const v = parseDec($("#mf-" + m.k).value); if (v === null) continue; if (!isNum(v) || v <= 0) bad = m.label; else vals[m.k] = Math.round(v * 10) / 10; }
+    if (bad) { toast(`Valor inválido em ${bad}. Use números, como 82,5.`); return; }
+    if (!Object.keys(vals).length) { toast("Preencha pelo menos uma medida."); return; }
+    const note = $("#mf-note").value.trim();
+    const me = clone(S.players[S.me]); me.measurements = me.measurements || [];
+    const editId = f.dataset.edit;
+    if (editId) {
+      const i = me.measurements.findIndex(m => m.id === editId);
+      me.measurements[i] = { id: editId, date, ...vals, ...(note ? { note } : {}) };
+    } else {
+      const same = me.measurements.find(m => m.date === date);
+      if (same) { Object.assign(same, vals); if (note) same.note = note; }
+      else me.measurements.push({ id: "m" + Date.now().toString(36), date, ...vals, ...(note ? { note } : {}) });
+    }
+    closeSheet(); S.view = S.me;
+    await commit(me, editId ? "Medição corrigida." : "Medição salva!");
+  }
+});
+
+document.addEventListener("click", async e => {
+  const t = e.target.closest("[data-act]");
+  if (e.target === $("#sheet")) return closeSheet();
+  if (!t) { if (S.armed) { S.armed = null; renderHistory(); } return; }
+  const act = t.dataset.act;
+  if (act !== "del" && S.armed) { S.armed = null; }
+  if (act === "close") closeSheet();
+  else if (act === "profile") profileSheet();
+  else if (act === "measure") measureSheet();
+  else if (act === "edit") measureSheet(t.dataset.id);
+  else if (act === "view") { S.view = t.dataset.id; render(); }
+  else if (act === "chart") { S.chart = t.dataset.k; renderChart(); }
+  else if (act === "demo") startDemo(false);
+  else if (act === "exitdemo") location.reload();
+  else if (act === "logout") { await sb.auth.signOut(); }
+  else if (act === "checkin" || act === "ck") {
+    const d = act === "ck" ? t.dataset.d : TODAY;
+    const me = clone(S.players[S.me]); const set = new Set(me.checkins || []);
+    const adding = !set.has(d);
+    adding ? set.add(d) : set.delete(d);
+    me.checkins = [...set].sort();
+    await commit(me, adding ? `Treino de ${d === TODAY ? "hoje" : fmtDate(d)} marcado.` : "Treino desmarcado.");
+  }
+  else if (act === "del") {
+    if (S.armed !== t.dataset.id) { S.armed = t.dataset.id; renderHistory(); return; }
+    S.armed = null;
+    const me = clone(S.players[S.me]); me.measurements = me.measurements.filter(m => m.id !== t.dataset.id);
+    await commit(me, "Medição apagada.");
+  }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#sheet").hidden) closeSheet(); });
+
+// ---------- feedback ----------
+function toast(msg, kind) {
+  const el = document.createElement("div"); el.className = "toast " + (kind || ""); el.textContent = msg;
+  $("#toasts").appendChild(el); setTimeout(() => el.remove(), kind === "lvlup" ? 4200 : 3200);
+}
+function confetti(scale = 1) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const c = $("#confetti"), ctx = c.getContext("2d"); c.hidden = false;
+  c.width = innerWidth * devicePixelRatio; c.height = innerHeight * devicePixelRatio; ctx.scale(devicePixelRatio, devicePixelRatio);
+  const css = getComputedStyle(document.documentElement);
+  const cols = ["--p10", "--p15", "--p20", "--p25"].map(v => css.getPropertyValue(v).trim());
+  const bits = Array.from({ length: Math.round(140 * scale) }, () => ({ x: innerWidth / 2 + (Math.random() - .5) * 120, y: innerHeight * .35, vx: (Math.random() - .5) * 14, vy: -Math.random() * 14 - 4, w: 6 + Math.random() * 8, h: 10 + Math.random() * 14, r: Math.random() * 6, vr: (Math.random() - .5) * .3, c: cols[Math.floor(Math.random() * 4)] }));
+  const t0 = performance.now();
+  (function frame(now) {
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    for (const b of bits) { b.vy += .45; b.x += b.vx; b.y += b.vy; b.r += b.vr; ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.r); ctx.fillStyle = b.c; ctx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h); ctx.restore(); }
+    if (now - t0 < 2200) requestAnimationFrame(frame); else { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, c.width, c.height); c.hidden = true; }
+  })(t0);
+}
+
+boot();
+</script>
+</body>
+</html>
