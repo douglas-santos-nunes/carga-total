@@ -122,17 +122,20 @@ tr:last-child td { border-bottom: 0; }
 .spark { width: 96px; height: 26px; display: block; }
 .chart svg { width: 100%; height: auto; display: block; }
 
-.cal { display: grid; grid-template-columns: 28px repeat(16, minmax(0, 1fr)); gap: 4px; max-width: 620px; }
-.cal .wd { font-size: 10px; color: var(--muted); align-self: center; }
-.cell { aspect-ratio: 1; max-width: 100%; border-radius: 4px; background: var(--sunken); border: 0; padding: 0; position: relative; }
-.cell.on { background: var(--pc); }
-.cell.strava { background: var(--strava); }
-.cell.meas::after { content: ""; position: absolute; inset: 30%; border-radius: 50%; background: var(--surface); }
-.cell.today { outline: 2px solid var(--ink); }
-.cell.future { opacity: .35; }
-button.cell:hover { filter: brightness(.9); }
-.cal-wrap { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
-.cal-side { display: grid; gap: 10px; min-width: 180px; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) 44px; gap: 6px; width: 100%; max-width: 480px; }
+.cal .wd { font-size: 11px; font-weight: 700; color: var(--muted); text-align: center; text-transform: uppercase; }
+.cell { aspect-ratio: 1; min-width: 0; border-radius: 8px; background: var(--sunken); border: 0; padding: 0; position: relative; color: var(--ink); font-family: inherit; font-weight: 600; font-size: 13px; line-height: 1; display: grid; place-items: center; }
+.cell.on { background: var(--pc); color: #fff; }
+.cell.strava { background: var(--strava); color: #fff; }
+.cell.meas::after { content: ""; position: absolute; right: 5px; top: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--xp); box-shadow: 0 0 0 1.5px var(--surface); }
+.cell.today { outline: 2px solid var(--ink); outline-offset: 1px; }
+.cell.future { opacity: .3; }
+.cell .mo { position: absolute; left: 4px; top: 3px; font-size: 9px; font-weight: 700; opacity: .8; }
+button.cell:hover { filter: brightness(.92); }
+.wk { display: grid; place-items: center; border-radius: 8px; font-size: 12px; font-weight: 800; color: var(--muted); }
+.wk.ok { color: var(--ink); background: color-mix(in srgb, var(--pc) 22%, transparent); }
+.cal-wrap { display: grid; grid-template-columns: minmax(0, 480px) auto; gap: 24px; align-items: start; }
+.cal-side { display: grid; gap: 10px; min-width: 160px; }
 .cal-side .big { font-family: var(--display); font-size: 48px; font-weight: 900; line-height: 1; }
 .cal-side small { color: var(--muted); }
 .cal-legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); flex-wrap: wrap; align-items: center; }
@@ -210,7 +213,9 @@ footer button { background: none; border: 0; color: inherit; text-decoration: un
   .login h2 { font-size: 36px; }
   .brand h1 { font-size: 32px; }
   .hrow { grid-template-columns: 1fr; gap: 6px; }
-  .cal { grid-template-columns: 24px repeat(16, minmax(0, 1fr)); gap: 3px; }
+  .cal { gap: 4px; grid-template-columns: repeat(7, minmax(0, 1fr)) 36px; max-width: none; }
+  .cal-wrap { grid-template-columns: 1fr; gap: 14px; }
+  .cal-side { grid-template-columns: 1fr 1fr; min-width: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -707,26 +712,30 @@ function renderChart() {
 }
 
 function renderCalendar() {
-  const WEEKS = 16, end = mondayOf(TODAY) + 6, start = end - 7 * WEEKS + 1;
-  const wds = ["Seg", "", "Qua", "", "Sex", "", "Dom"];
+  // Calendário comum: semanas em linhas (mais antiga em cima), dias da semana em colunas, total da semana no fim.
+  const MAXW = 8, last = mondayOf(TODAY);
+  const first = Math.max(START && S.mode !== "demo" ? mondayOf(START) : last - 7 * 5, last - 7 * (MAXW - 1));
+  const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
   const set = new Set(S.p.checkins || []), meas = new Set((S.p.measurements || []).map(m => m.date));
   const fromStrava = new Set((S.p.strava?.activities || []).map(a => a.date));
   const st = stats(S.p);
-  let cells = "";
-  for (let r = 0; r < 7; r++) {
-    cells += `<span class="wd">${wds[r]}</span>`;
-    for (let c = 0; c < WEEKS; c++) {
-      const d = fromDay(start + c * 7 + r), fut = d > TODAY || !counts(d), on = set.has(d) && counts(d);
+  let cells = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map(w => `<span class="wd">${w}</span>`).join("") + `<span class="wd">Total</span>`;
+  for (let w = first; w <= last; w += 7) {
+    for (let i = 0; i < 7; i++) {
+      const d = fromDay(w + i), day = Number(d.slice(8)), fut = d > TODAY || !counts(d), on = set.has(d) && counts(d);
       const cls = ["cell", on ? (fromStrava.has(d) ? "strava" : "on") : "", meas.has(d) ? "meas" : "", d === TODAY ? "today" : "", fut ? "future" : ""].join(" ");
       const label = `${fmtDateLong(d)}${on ? ", treinou" : ""}${on && fromStrava.has(d) ? " (Strava)" : ""}${meas.has(d) ? ", mediu" : ""}`;
-      cells += fut ? `<span class="${cls}" title="${label}"></span>` : `<button type="button" class="${cls}" data-act="ck" data-d="${d}" aria-label="${label}" aria-pressed="${on}" title="${label}"></button>`;
+      const inner = `${day === 1 || (w === first && i === 0) ? `<span class="mo">${MONTHS[Number(d.slice(5, 7)) - 1]}</span>` : ""}${day}`;
+      cells += fut ? `<span class="${cls}" title="${label}">${inner}</span>` : `<button type="button" class="${cls}" data-act="ck" data-d="${d}" aria-label="${label}" aria-pressed="${on}" title="${label}">${inner}</button>`;
     }
+    const n = st.weeks.get(w) || 0;
+    cells += `<span class="wk num ${n >= 3 ? "ok" : ""}" title="${n} treinos nesta semana">${n}/3</span>`;
   }
-  const thisWeek = st.weeks.get(mondayOf(TODAY)) || 0;
-  $("#calendar").innerHTML = `<div class="sec-head"><div><h2>Frequência</h2><p>Últimas ${WEEKS} semanas. Toque num dia para marcar ou desmarcar treino.${START && S.mode !== "demo" ? ` Conta a partir de ${fmtDate(START)}.` : ""} Meta: 3 por semana para manter a sequência.</p></div></div>
+  const thisWeek = st.weeks.get(last) || 0;
+  $("#calendar").innerHTML = `<div class="sec-head"><div><h2>Frequência</h2><p>Toque num dia para marcar ou desmarcar treino.${START && S.mode !== "demo" ? ` Conta a partir de ${fmtDate(START)}.` : ""} Meta: 3 por semana.</p></div></div>
     <div class="panel"><div class="cal-wrap"><div class="cal">${cells}</div>
       <div class="cal-side"><div><div class="big num">${thisWeek}/3</div><small>treinos nesta semana</small></div><div><div class="big num">${st.streak}</div><small>semanas seguidas na meta</small></div></div></div>
-      <div class="cal-legend" style="margin-top:12px"><span><i style="background:var(--pc)"></i>treino marcado</span><span><i style="background:var(--strava)"></i>treino do Strava</span><span><i style="background:var(--sunken);box-shadow:inset 0 0 0 3px var(--sunken), inset 0 0 0 6px var(--surface)"></i>dia de medição</span></div></div>`;
+      <div class="cal-legend" style="margin-top:12px"><span><i style="background:var(--pc)"></i>treino marcado</span><span><i style="background:var(--strava)"></i>treino do Strava</span><span><i style="background:var(--xp);border-radius:50%"></i>dia de medição</span></div></div>`;
 }
 
 function renderStrava() {
