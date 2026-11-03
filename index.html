@@ -266,8 +266,8 @@ const TODAY = ymdLocal(new Date());
 const fmtDate = s => { const [, m, d] = s.split("-"); return `${d}/${m}`; };
 const fmtDateLong = s => { const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
 const isNum = v => typeof v === "number" && isFinite(v);
-const fmt = (v, dec = 1) => isNum(v) ? v.toLocaleString("pt-BR", { maximumFractionDigits: dec }) : "–";
-const signed = (v, dec = 1) => (v > 0 ? "+" : v < 0 ? "−" : "±") + fmt(Math.abs(v), dec);
+const fmt = (v, dec = 2) => isNum(v) ? v.toLocaleString("pt-BR", { maximumFractionDigits: dec }) : "–";
+const signed = (v, dec = 2) => (v > 0 ? "+" : v < 0 ? "−" : "±") + fmt(Math.abs(v), dec);
 const parseDec = s => { const t = String(s ?? "").trim().replace(",", "."); if (!t) return null; const n = Number(t); return isFinite(n) ? n : NaN; };
 const clone = o => JSON.parse(JSON.stringify(o));
 const dur = s => { const h = Math.floor(s / 3600), m = Math.round(s % 3600 / 60); return h ? `${h}h${pad(m)}` : `${m} min`; };
@@ -278,12 +278,16 @@ const METRICS = [
   { k: "weight", label: "Peso", unit: "kg", dir: { emagrecer: -1, ganhar: 1, recomp: 0 } },
   { k: "fat", label: "Gordura", unit: "%", dir: -1 },
   { k: "muscle", label: "Massa muscular", unit: "kg", dir: 1 },
-  { k: "waist", label: "Cintura", unit: "cm", dir: -1 },
-  { k: "hip", label: "Quadril", unit: "cm", dir: { emagrecer: -1, ganhar: 0, recomp: 0 } },
   { k: "chest", label: "Peito", unit: "cm", dir: { emagrecer: 0, ganhar: 1, recomp: 1 } },
-  { k: "arm", label: "Braço", unit: "cm", dir: { emagrecer: 0, ganhar: 1, recomp: 1 } },
-  { k: "thigh", label: "Coxa", unit: "cm", dir: { emagrecer: -1, ganhar: 1, recomp: 0 } },
-  { k: "calf", label: "Panturrilha", unit: "cm", dir: { emagrecer: 0, ganhar: 1, recomp: 0 } },
+  { k: "waist", label: "Cintura", unit: "cm", dir: -1 },
+  { k: "abdomen", label: "Abdômen", unit: "cm", dir: -1 },
+  { k: "hip", label: "Quadril", unit: "cm", dir: { emagrecer: -1, ganhar: 0, recomp: 0 } },
+  { k: "arm", label: "Braço D", unit: "cm", dir: { emagrecer: 0, ganhar: 1, recomp: 1 } },
+  { k: "armL", label: "Braço E", unit: "cm", dir: { emagrecer: 0, ganhar: 1, recomp: 1 } },
+  { k: "thigh", label: "Coxa D", unit: "cm", dir: { emagrecer: -1, ganhar: 1, recomp: 0 } },
+  { k: "thighL", label: "Coxa E", unit: "cm", dir: { emagrecer: -1, ganhar: 1, recomp: 0 } },
+  { k: "calf", label: "Panturrilha D", unit: "cm", dir: { emagrecer: 0, ganhar: 1, recomp: 0 } },
+  { k: "calfL", label: "Panturrilha E", unit: "cm", dir: { emagrecer: 0, ganhar: 1, recomp: 0 } },
 ];
 const dirOf = (m, goal) => typeof m.dir === "number" ? m.dir : (m.dir[goal] ?? 0);
 const MASCOTS = ["🦍", "🐯", "🦁", "🐺", "🐻", "🦊", "🐼", "🐸", "🦈", "🦅", "🐙", "🦄", "🐝", "🐢"];
@@ -309,7 +313,7 @@ const BADGES = [
   { id: "waist", glyph: "−2", name: "Cintura em queda", desc: "2 cm a menos de cintura desde o início.", test: c => c.delta("waist") <= -2 },
   { id: "scale", glyph: "kg", name: "Balança a favor", desc: "Peso 2 kg na direção do objetivo (1,5 kg para quem quer ganhar massa).", test: c => c.goal === "emagrecer" ? c.delta("weight") <= -2 : c.goal === "ganhar" ? c.delta("weight") >= 1.5 : false },
   { id: "fat", glyph: "%", name: "Queima-gordura", desc: "1 ponto a menos de % de gordura.", test: c => c.delta("fat") <= -1 },
-  { id: "arm", glyph: "B+", name: "Braço de aço", desc: "1 cm a mais de braço.", test: c => c.delta("arm") >= 1 },
+  { id: "arm", glyph: "B+", name: "Braço de aço", desc: "1 cm a mais de braço.", test: c => Math.max(c.delta("arm") || 0, c.delta("armL") || 0) >= 1 },
   { id: "triple", glyph: "3↑", name: "Tripla vitória", desc: "3 medidas melhoraram de uma medição para a seguinte.", test: c => c.bestJump >= 3 },
   { id: "week4", glyph: "4x", name: "Semana cheia", desc: "4 treinos na mesma semana.", test: c => Math.max(0, ...c.weeks.values()) >= 4 },
   { id: "streak", glyph: "3s", name: "Constância", desc: "3 semanas seguidas com 3 treinos ou mais.", test: c => c.bestStreak >= 3 },
@@ -430,8 +434,8 @@ function startDemo(notConfigured) {
   S.p = { nick: "Exemplo", mascot: "🦍", goal: "ganhar", height: 178, color: "p25", checkins,
     strava: { connected: true, athlete: "Exemplo", lastSync: new Date().toISOString(), activities: acts },
     measurements: [
-      { id: "a1", date: d0, weight: 82.4, fat: 21.5, waist: 91, hip: 101, chest: 103, arm: 36, thigh: 58, calf: 38 },
-      { id: "a2", date: TODAY, weight: 83.1, fat: 20.6, waist: 89.5, hip: 100.5, chest: 104, arm: 36.8, thigh: 58.5, calf: 38.2 }] };
+      { id: "a1", date: d0, weight: 82.4, fat: 21.5, waist: 91, hip: 101, chest: 103, abdomen: 93, arm: 36, armL: 35.5, thigh: 58, thighL: 57.5, calf: 38, calfL: 37.8 },
+      { id: "a2", date: TODAY, weight: 83.1, fat: 20.6, waist: 89.5, hip: 100.5, chest: 104, abdomen: 91, arm: 36.8, armL: 36.4, thigh: 58.5, thighL: 58.2, calf: 38.2, calfL: 38 }] };
   render();
 }
 
@@ -682,7 +686,7 @@ function renderMetrics() {
   const w = lastVal(ms, "weight");
   if (p.height && isNum(w)) {
     const h2 = Math.pow(p.height / 100, 2), imc = w / h2, imc0 = firstVal(ms, "weight") / h2;
-    rows.push(`<tr><td><b>IMC</b></td><td class="r num">${fmt(imc0)}</td><td class="r num">–</td><td class="r num"><b>${fmt(imc)}</b></td><td class="r num">${ms.length < 2 ? "–" : `<span class="delta">${signed(imc - imc0)}</span>`}</td><td></td></tr>`);
+    rows.push(`<tr><td><b>IMC</b></td><td class="r num">${fmt(imc0, 1)}</td><td class="r num">–</td><td class="r num"><b>${fmt(imc, 1)}</b></td><td class="r num">${ms.length < 2 ? "–" : `<span class="delta">${signed(imc - imc0, 1)}</span>`}</td><td></td></tr>`);
   }
   $("#metrics").innerHTML = `<div class="sec-head"><div><h2>Medidas</h2><p>Verde é movimento a favor do seu objetivo (${esc(GOALS[st.goal]).toLowerCase()}); vermelho é contra; cinza não pesa para o objetivo.</p></div></div>
     <div class="panel">${rows.length ? `<div class="scroll"><table><thead><tr><th>Medida</th><th class="r">Início</th><th class="r">Anterior</th><th class="r">Atual</th><th class="r">Total</th><th>Tendência</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`
@@ -853,7 +857,7 @@ document.addEventListener("submit", async e => {
     const date = $("#mf-date").value;
     if (!date || date > TODAY) { toast("Escolha uma data até hoje."); return; }
     const vals = {}; let bad = false;
-    for (const m of METRICS) { const v = parseDec($("#mf-" + m.k).value); if (v === null) continue; if (!isNum(v) || v <= 0) bad = m.label; else vals[m.k] = Math.round(v * 10) / 10; }
+    for (const m of METRICS) { const v = parseDec($("#mf-" + m.k).value); if (v === null) continue; if (!isNum(v) || v <= 0) bad = m.label; else vals[m.k] = Math.round(v * 100) / 100; }
     if (bad) { toast(`Valor inválido em ${bad}. Use números, como 82,5.`); return; }
     if (!Object.keys(vals).length) { toast("Preencha pelo menos uma medida."); return; }
     const note = $("#mf-note").value.trim();
