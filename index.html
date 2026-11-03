@@ -330,7 +330,7 @@ function stats(p) {
     }
     improvements += jump; bestJump = Math.max(bestJump, jump);
   }
-  const checkins = [...new Set(p.checkins || [])].filter(d => d <= TODAY).sort();
+  const checkins = [...new Set(p.checkins || [])].filter(d => d <= TODAY && counts(d)).sort();
   const weeks = new Map();
   for (const d of checkins) { const w = mondayOf(d); weeks.set(w, (weeks.get(w) || 0) + 1); }
   // sequência: semanas seguidas com 3+ treinos; a semana atual só conta depois de bater a meta
@@ -359,6 +359,8 @@ const stravaReady = !!(cfg.stravaClientId && !/SEU/.test(String(cfg.stravaClient
 const S = { mode: "loading", me: null, email: "", p: null, chart: "weight", loaded: false, error: "", armed: null, sent: "", auth: "login", lastEmail: "", syncing: false };
 let sb = null;
 const pageUrl = () => location.origin + location.pathname;
+const START = /^\d{4}-\d{2}-\d{2}$/.test(cfg.inicio || "") ? cfg.inicio : "";
+const counts = d => S.mode === "demo" || !START || d >= START;
 
 // ---------- dados ----------
 async function boot() {
@@ -462,15 +464,17 @@ async function stravaSync(quiet) {
   if (S.syncing || !S.p) return;
   S.syncing = true; renderStrava();
   try {
-    const known = S.p.strava?.activities || [];
-    const since = S.p.strava?.lastSync ? Date.parse(S.p.strava.lastSync) / 1000 - 3 * 86400 : Date.now() / 1000 - 90 * 86400;
+    const known = (S.p.strava?.activities || []).filter(a => counts(a.date));
+    let since = S.p.strava?.lastSync ? Date.parse(S.p.strava.lastSync) / 1000 - 3 * 86400 : Date.now() / 1000 - 90 * 86400;
+    if (START) since = Math.max(since, Date.parse(START + "T00:00:00Z") / 1000 - 86400);
     const r = await callStrava({ action: "activities", after: Math.floor(since) });
+    const got = (r.activities || []).filter(a => counts(a.date));
     const before = stats(S.p);
     const p = clone(S.p);
     const ids = new Set(known.map(a => a.id));
-    const fresh = (r.activities || []).filter(a => !ids.has(a.id));
-    const merged = [...fresh, ...known.map(a => (r.activities || []).find(x => x.id === a.id) || a)].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 120);
-    const set = new Set(p.checkins || []);
+    const fresh = got.filter(a => !ids.has(a.id));
+    const merged = [...fresh, ...known.map(a => got.find(x => x.id === a.id) || a)].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 120);
+    const set = new Set((p.checkins || []).filter(counts));
     for (const a of fresh) if (a.date <= TODAY) set.add(a.date);
     p.checkins = [...set].sort();
     p.strava = { ...(p.strava || {}), connected: true, lastSync: new Date().toISOString(), activities: merged };
@@ -704,14 +708,14 @@ function renderCalendar() {
   for (let r = 0; r < 7; r++) {
     cells += `<span class="wd">${wds[r]}</span>`;
     for (let c = 0; c < WEEKS; c++) {
-      const d = fromDay(start + c * 7 + r), fut = d > TODAY, on = set.has(d);
+      const d = fromDay(start + c * 7 + r), fut = d > TODAY || !counts(d), on = set.has(d) && counts(d);
       const cls = ["cell", on ? (fromStrava.has(d) ? "strava" : "on") : "", meas.has(d) ? "meas" : "", d === TODAY ? "today" : "", fut ? "future" : ""].join(" ");
       const label = `${fmtDateLong(d)}${on ? ", treinou" : ""}${on && fromStrava.has(d) ? " (Strava)" : ""}${meas.has(d) ? ", mediu" : ""}`;
       cells += fut ? `<span class="${cls}" title="${label}"></span>` : `<button type="button" class="${cls}" data-act="ck" data-d="${d}" aria-label="${label}" aria-pressed="${on}" title="${label}"></button>`;
     }
   }
   const thisWeek = st.weeks.get(mondayOf(TODAY)) || 0;
-  $("#calendar").innerHTML = `<div class="sec-head"><div><h2>Frequência</h2><p>Últimas ${WEEKS} semanas. Toque num dia para marcar ou desmarcar treino. Meta: 3 por semana para manter a sequência.</p></div></div>
+  $("#calendar").innerHTML = `<div class="sec-head"><div><h2>Frequência</h2><p>Últimas ${WEEKS} semanas. Toque num dia para marcar ou desmarcar treino.${START && S.mode !== "demo" ? ` Conta a partir de ${fmtDate(START)}.` : ""} Meta: 3 por semana para manter a sequência.</p></div></div>
     <div class="panel"><div class="cal-wrap"><div class="cal">${cells}</div>
       <div class="cal-side"><div><div class="big num">${thisWeek}/3</div><small>treinos nesta semana</small></div><div><div class="big num">${st.streak}</div><small>semanas seguidas na meta</small></div></div></div>
       <div class="cal-legend" style="margin-top:12px"><span><i style="background:var(--pc)"></i>treino marcado</span><span><i style="background:var(--strava)"></i>treino do Strava</span><span><i style="background:var(--sunken);box-shadow:inset 0 0 0 3px var(--sunken), inset 0 0 0 6px var(--surface)"></i>dia de medição</span></div></div>`;
