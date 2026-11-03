@@ -4,5 +4,5 @@
 window.CARGA_CONFIG = {
   url: "https://SEU-PROJETO.supabase.co",
   anonKey: "SUA-ANON-KEY",
-  stravaClientId: "SEU-CLIENT-ID-STRAVA" // opcional
+  stravaClientId: "293700"
 };
