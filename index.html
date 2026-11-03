@@ -68,7 +68,7 @@ button { cursor: pointer; }
 .btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
 .btn:hover { border-color: var(--muted); }
 .btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-.btn.go { background: var(--p10); border-color: var(--p10); color: #fff; }
+.btn.go { background: var(--pc); border-color: var(--pc); color: #fff; }
 .btn.strava { background: var(--strava); border-color: var(--strava); color: #fff; }
 .btn.small { padding: 5px 10px; font-size: 13px; border-radius: 8px; }
 .btn.danger { color: var(--bad); }
@@ -86,14 +86,19 @@ button { cursor: pointer; }
 .f-name { min-width: 0; flex: 1; }
 .f-name h2 { font-size: 34px; font-weight: 800; overflow-wrap: anywhere; }
 .f-name p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
-.loadline { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
-.load { font-family: var(--display); font-weight: 900; font-size: 84px; line-height: .85; }
-.load small { font-size: 30px; font-weight: 800; margin-right: 10px; color: var(--muted); text-transform: uppercase; }
-.lvl { font-family: var(--display); font-weight: 800; font-size: 22px; text-transform: uppercase; color: var(--muted); }
-.barbell { width: 100%; max-width: 480px; height: auto; display: block; margin-inline: auto; }
-.xpbar { height: 12px; background: var(--sunken); border-radius: 99px; overflow: hidden; }
-.xpbar i { display: block; height: 100%; background: var(--xp); border-radius: 99px; transition: width .6s ease; }
-.xptext { margin: -8px 0 0; font-size: 13px; color: var(--muted); }
+.a-bar { display: grid; justify-items: center; gap: 4px; min-width: 0; }
+.lvlbox { display: inline-flex; align-items: center; gap: 12px; padding: 6px 16px 6px 6px; border-radius: 99px; background: color-mix(in srgb, var(--pc) 14%, var(--sunken)); border: 1px solid color-mix(in srgb, var(--pc) 35%, transparent); }
+.lvlnum { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(145deg, color-mix(in srgb, var(--pc) 70%, #fff), var(--pc)); color: #fff; font-family: var(--display); font-weight: 900; font-size: 26px; box-shadow: 0 4px 14px color-mix(in srgb, var(--pc) 45%, transparent); }
+.lvlbox small { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; }
+.lvlbox b { display: block; font-family: var(--display); font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; line-height: 1.1; }
+.barbell { width: 100%; max-width: 420px; height: auto; display: block; margin-inline: auto; }
+.xpbar { height: 10px; background: var(--sunken); border-radius: 99px; overflow: hidden; }
+.xpbar i { display: block; height: 100%; background: linear-gradient(90deg, color-mix(in srgb, var(--pc) 55%, #fff), var(--pc)); border-radius: 99px; transition: width .6s ease; }
+.xptext { margin: -8px 0 0; font-size: 12.5px; color: var(--muted); text-align: center; }
+.hero-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.hero-actions .btn { justify-content: center; padding: 13px 8px; border-radius: 12px; font-size: 14.5px; white-space: nowrap; min-width: 0; }
+.hero-actions .hint { grid-column: 1 / -1; text-align: center; color: var(--muted); font-size: 12.5px; }
+.btn.done { background: color-mix(in srgb, var(--pc) 14%, var(--surface)); border-color: color-mix(in srgb, var(--pc) 40%, transparent); }
 .fstats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 0; }
 .fstats div { background: var(--sunken); border-radius: 10px; padding: 9px 12px; min-width: 0; }
 .fstats dt { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
@@ -208,7 +213,6 @@ footer button { background: none; border: 0; color: inherit; text-decoration: un
   .a-main { grid-template-columns: 1fr; }
   .fstats { grid-template-columns: repeat(2, 1fr); }
   .fstats div:last-child:nth-child(odd) { grid-column: 1 / -1; }
-  .load { font-size: 66px; }
   .login { grid-template-columns: 1fr; padding: 18px; }
   .login h2 { font-size: 36px; }
   .brand h1 { font-size: 32px; }
@@ -301,7 +305,8 @@ const COLORS = { p25: "25", p20: "20", p15: "15", p10: "10" };
 const SPORTS = { Run: "Corrida", TrailRun: "Trilha", Ride: "Pedal", VirtualRide: "Pedal indoor", Walk: "Caminhada", Hike: "Trilha a pé", Swim: "Natação", WeightTraining: "Musculação", Workout: "Treino", Crossfit: "Crossfit", HighIntensityIntervalTraining: "HIIT", Yoga: "Yoga", Pilates: "Pilates", Elliptical: "Elíptico", StairStepper: "Escada", Rowing: "Remo", Soccer: "Futebol", Tennis: "Tênis" };
 // Cada nível coloca mais um par de anilhas na barra olímpica de 20 kg.
 const PLATES = [10, 15, 20, 25, 25, 25, 25, 25, 25, 25, 25, 25];
-const PLATE_COLOR = { 10: "var(--p10)", 15: "var(--p15)", 20: "var(--p20)", 25: "var(--p25)" };
+// Anilhas em tons da cor escolhida no perfil: a maior é a cor cheia, as menores vão clareando.
+const PLATE_COLOR = { 10: "color-mix(in srgb, var(--pc) 45%, #fff)", 15: "color-mix(in srgb, var(--pc) 65%, #fff)", 20: "color-mix(in srgb, var(--pc) 82%, #fff)", 25: "var(--pc)" };
 const needXp = L => 50 * (L - 1) * (L + 2);
 const loadOf = L => 20 + 2 * PLATES.slice(0, Math.min(L - 1, PLATES.length)).reduce((a, b) => a + b, 0);
 const TITLES = ["Barra vazia", "Aquecendo", "Pegando ritmo", "Constante", "Firme", "Forte", "Fera", "Monstro", "Imparável", "Lenda"];
@@ -511,7 +516,7 @@ function barbell(L) {
   const W = 260, cy = 44, cL = 86, cR = 174, room = 64;
   const total = plates.reduce((s, w) => s + dims[w][0] + 1.5, 0);
   const k = total > room ? room / total : 1;
-  let out = `<svg class="barbell" viewBox="0 0 ${W} 88" role="img" aria-label="Barra com ${loadOf(L)} kg">`;
+  let out = `<svg class="barbell" viewBox="0 0 ${W} 88" role="img" aria-label="Barra do nível ${L}">`;
   out += `<rect x="14" y="${cy - 3}" width="${W - 28}" height="6" rx="3" fill="var(--bar)"/>`;
   out += `<rect x="${cL}" y="${cy - 2}" width="${cR - cL}" height="4" fill="var(--muted)" opacity=".35"/>`;
   out += `<rect x="${cL - 4}" y="${cy - 8}" width="4" height="16" rx="1" fill="var(--bar)"/><rect x="${cR}" y="${cy - 8}" width="4" height="16" rx="1" fill="var(--bar)"/>`;
@@ -519,8 +524,8 @@ function barbell(L) {
   for (const w of plates) {
     const pw = dims[w][0] * k, h = dims[w][1];
     xl -= pw;
-    out += `<rect x="${xl.toFixed(1)}" y="${cy - h / 2}" width="${pw.toFixed(1)}" height="${h}" rx="2" fill="${PLATE_COLOR[w]}"/>`;
-    out += `<rect x="${xr.toFixed(1)}" y="${cy - h / 2}" width="${pw.toFixed(1)}" height="${h}" rx="2" fill="${PLATE_COLOR[w]}"/>`;
+    out += `<rect x="${xl.toFixed(1)}" y="${cy - h / 2}" width="${pw.toFixed(1)}" height="${h}" rx="2" style="fill:${PLATE_COLOR[w]}"/>`;
+    out += `<rect x="${xr.toFixed(1)}" y="${cy - h / 2}" width="${pw.toFixed(1)}" height="${h}" rx="2" style="fill:${PLATE_COLOR[w]}"/>`;
     xl -= 1.5 * k; xr += pw + 1.5 * k;
   }
   if (!plates.length) out += `<text x="${W / 2}" y="${cy + 26}" text-anchor="middle" font-size="11" fill="var(--muted)">barra vazia, bora carregar</text>`;
@@ -659,12 +664,14 @@ function renderHero() {
       <div class="a-id">
         <div class="f-top">
           <div class="mascot" aria-hidden="true">${esc(p.mascot || "🏋️")}</div>
-          <div class="f-name"><h2>${esc(p.nick)}</h2><p>Objetivo: ${esc(GOALS[p.goal] || "Recomposição")}${p.height ? ` · ${fmt(p.height, 0)} cm` : ""}</p></div>
+          <div class="f-name"><h2>${esc(p.nick)}</h2><p>Objetivo: ${esc(GOALS[p.goal] || "Recomposição")}${p.height ? ` · <span style="white-space:nowrap">${fmt(p.height, 0)} cm</span>` : ""}</p></div>
           <button class="btn small" type="button" data-act="profile">Editar</button>
         </div>
-        <div class="loadline"><span class="load num"><small>Nível</small>${st.level}</span><span class="lvl">${titleOf(st.level)}</span></div>
       </div>
-      ${barbell(st.level)}
+      <div class="a-bar">
+        <div class="lvlbox"><span class="lvlnum num">${st.level}</span><div><small>Nível</small><b>${titleOf(st.level)}</b></div></div>
+        ${barbell(st.level)}
+      </div>
     </div>
     <div class="xpbar" role="progressbar" aria-valuemin="${st.from}" aria-valuemax="${st.to}" aria-valuenow="${st.xp}" aria-label="Experiência"><i style="width:${pct.toFixed(1)}%"></i></div>
     <p class="xptext num">${st.xp} XP · faltam ${st.to - st.xp} XP para o nível ${st.level + 1} · cada nível põe uma anilha na barra</p>
@@ -675,9 +682,9 @@ function renderHero() {
       <div><dt>Sequência</dt><dd>${st.streak} ${st.streak === 1 ? "semana" : "semanas"}</dd></div>
       <div><dt>Medir de novo</dt><dd>${next}</dd></div>
     </dl>
-    <div class="actions">
+    <div class="hero-actions">
       <button class="btn primary" type="button" data-act="measure">Registrar medidas</button>
-      <button class="btn ${trained ? "" : "go"}" type="button" data-act="checkin" aria-pressed="${trained}">${trained ? "Treino de hoje marcado ✓" : "Treinei hoje (+25 XP)"}</button>
+      <button class="btn ${trained ? "done" : "go"}" type="button" data-act="checkin" aria-pressed="${trained}">${trained ? "Treino de hoje ✓" : "Treinei hoje +25 XP"}</button>
       <span class="hint">Medição vale ${XP.measure} XP e cada medida que melhora vale mais ${XP.improve}.</span>
     </div>
   </div>`;
