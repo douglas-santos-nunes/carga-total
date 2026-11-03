@@ -83,6 +83,7 @@ Deno.serve(async (req) => {
           out.push({
             id: a.id, date: String(a.start_date_local).slice(0, 10), type: a.sport_type || a.type,
             name: a.name, moving_time: a.moving_time, distance: a.distance,
+            start: a.start_date_local, elevation: a.total_elevation_gain, hr: a.average_heartrate,
           });
         }
         if (list.length < 100) break;

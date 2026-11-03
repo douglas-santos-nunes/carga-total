@@ -59,8 +59,20 @@ button { cursor: pointer; }
 :focus-visible { outline: 3px solid var(--xp); outline-offset: 2px; }
 .num { font-variant-numeric: tabular-nums; }
 
-.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.brand { display: flex; align-items: center; gap: 12px; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.bell { position: relative; flex: none; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 0; }
+.bell[hidden] { display: none; }
+.bell-count { position: absolute; top: -5px; right: -5px; min-width: 19px; height: 19px; padding: 0 5px; display: grid; place-items: center; border-radius: 99px; background: var(--strava); color: #fff; font-size: 11px; font-weight: 800; }
+.bell-count[hidden] { display: none; }
+.notifs { display: grid; gap: 8px; }
+.notif { display: grid; gap: 3px; text-align: left; padding: 11px 13px; border-radius: 12px; border: 1px solid var(--line); background: var(--sunken); color: var(--ink); }
+.notif small { color: var(--muted); }
+.notif.unread { border-color: var(--strava); }
+.dayact { display: grid; gap: 3px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.dayact:last-child { border-bottom: 0; }
+.dayact small { color: var(--muted); }
+.dayact a { color: var(--strava); font-size: 13px; font-weight: 600; margin-top: 3px; }
 .brand h1 { font-size: 40px; font-weight: 900; letter-spacing: .02em; }
 .brand p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
 .logo { width: 46px; height: 46px; flex: none; }
@@ -99,7 +111,7 @@ button { cursor: pointer; }
 .hero-actions .btn { justify-content: center; padding: 13px 8px; border-radius: 12px; font-size: 14.5px; white-space: nowrap; min-width: 0; }
 .hero-actions .hint { grid-column: 1 / -1; text-align: center; color: var(--muted); font-size: 12.5px; }
 .btn.done { background: color-mix(in srgb, var(--pc) 14%, var(--surface)); border-color: color-mix(in srgb, var(--pc) 40%, transparent); }
-.fstats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 0; }
+.fstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0; }
 .fstats div { background: var(--sunken); border-radius: 10px; padding: 9px 12px; min-width: 0; }
 .fstats dt { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .fstats dd { margin: 2px 0 0; font-weight: 700; font-size: 17px; }
@@ -136,11 +148,13 @@ tr:last-child td { border-bottom: 0; }
 .cell.today { outline: 2px solid var(--ink); outline-offset: 1px; }
 .cell.future { opacity: .3; }
 .cell .mo { position: absolute; left: 4px; top: 3px; font-size: 9px; font-weight: 700; opacity: .8; }
+.cell .many { position: absolute; right: -4px; bottom: -4px; padding: 1px 3px; border-radius: 5px; background: var(--ink); color: var(--bg); font-size: 9px; font-weight: 800; line-height: 1.2; z-index: 1; }
 .wk { display: grid; place-items: center; border-radius: 8px; font-size: 12px; font-weight: 800; color: var(--muted); }
 .wk.ok { color: var(--ink); background: color-mix(in srgb, var(--pc) 22%, transparent); }
 .cal-wrap { display: grid; grid-template-columns: minmax(0, 480px) auto; gap: 24px; align-items: start; }
 .cal-side { display: grid; gap: 10px; min-width: 160px; }
-.cal-side .big { font-family: var(--display); font-size: 48px; font-weight: 900; line-height: 1; }
+.cal-side .big { font-family: var(--display); font-size: 36px; font-weight: 900; line-height: 1; }
+.cal-side .wide { grid-column: 1 / -1; }
 .cal-side small { color: var(--muted); }
 .cal-legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); flex-wrap: wrap; align-items: center; }
 .cal-legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; }
@@ -241,6 +255,10 @@ footer button { background: none; border: 0; color: inherit; text-decoration: un
         <p>Seu placar de evolução. Cada medida e cada treino carrega a sua barra.</p>
       </div>
     </div>
+    <button type="button" class="bell" id="bell" data-act="bell" aria-label="Notificações" hidden>
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>
+      <span class="bell-count num" id="bellCount" hidden></span>
+    </button>
   </header>
 
   <div id="banner" hidden></div>
@@ -319,6 +337,7 @@ const firstVal = (ms, k) => { for (const m of ms) if (isNum(m[k])) return m[k]; 
 const lastVal = (ms, k) => { for (let i = ms.length - 1; i >= 0; i--) if (isNum(ms[i][k])) return ms[i][k]; return null; };
 const prevVal = (ms, k) => { let n = 0; for (let i = ms.length - 1; i >= 0; i--) if (isNum(ms[i][k])) { if (n++ === 1) return ms[i][k]; } return null; };
 const mondayOf = s => { const n = dayNum(s); const wd = (new Date(n * 864e5).getUTCDay() + 6) % 7; return n - wd; };
+const activitiesOn = (p, d) => (p.strava?.activities || []).filter(a => a.date === d).sort((a, b) => String(a.start || "").localeCompare(String(b.start || "")));
 
 const BADGES = [
   { id: "first", glyph: "1ª", name: "Primeira pesagem", desc: "Registrou a primeira medição.", test: c => c.ms.length >= 1 },
@@ -348,8 +367,14 @@ function stats(p) {
     improvements += jump; bestJump = Math.max(bestJump, jump);
   }
   const checkins = [...new Set(p.checkins || [])].filter(d => d <= TODAY && counts(d)).sort();
-  const weeks = new Map();
-  for (const d of checkins) { const w = mondayOf(d); weeks.set(w, (weeks.get(w) || 0) + 1); }
+  // treinos: um dia marcado vale 1 treino, ou o número de atividades do Strava naquele dia, se tiver mais
+  const perDay = new Map(), weeks = new Map();
+  let workouts = 0;
+  for (const d of checkins) {
+    const n = Math.max(1, activitiesOn(p, d).length), w = mondayOf(d);
+    perDay.set(d, n); workouts += n;
+    weeks.set(w, (weeks.get(w) || 0) + n);
+  }
   // sequência: semanas seguidas batendo a meta semanal do perfil; a semana atual só conta depois de bater
   const wgoal = weeklyGoalOf(p), thisWeek = mondayOf(TODAY);
   let w = (weeks.get(thisWeek) || 0) >= wgoal ? thisWeek : thisWeek - 7, streak = 0;
@@ -363,10 +388,10 @@ function stats(p) {
     if (d && isNum(a) && isNum(b) && a) score += d * (b - a) / a * 100;
   }
   const badges = BADGES.filter(b => b.test({ p, ms, goal, checkins, weeks, bestStreak, bestJump, delta })).map(b => b.id);
-  const xp = ms.length * XP.measure + checkins.length * XP.checkin + improvements * XP.improve + badges.length * XP.badge;
+  const xp = ms.length * XP.measure + workouts * XP.checkin + improvements * XP.improve + badges.length * XP.badge;
   const last = ms[ms.length - 1];
   const nextIn = last ? dayNum(addDays(last.date, 15)) - dayNum(TODAY) : null;
-  return { ms, goal, improvements, checkins, weeks, wgoal, streak, score: Math.round(score * 10) / 10, badges, xp, nextIn, ...levelOf(xp) };
+  return { ms, goal, improvements, checkins, perDay, workouts, weeks, wgoal, streak, score: Math.round(score * 10) / 10, badges, xp, nextIn, ...levelOf(xp) };
 }
 
 // ---------- estado ----------
@@ -404,10 +429,15 @@ async function start(session) {
     history.replaceState(null, "", location.pathname);
     if (q.get("code") && q.get("scope")?.includes("activity:read")) await stravaConnect(q.get("code"));
     else toast("O Strava não liberou a leitura das atividades. Tente de novo e deixe a opção marcada.");
-  } else if (S.p?.strava?.connected) {
-    const last = S.p.strava.lastSync ? Date.parse(S.p.strava.lastSync) : 0;
-    if (Date.now() - last > 60 * 60 * 1000) stravaSync(true);
-  }
+  } else autoSync();
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) autoSync(); });
+}
+
+// Busca treinos novos ao abrir o site e ao voltar para ele, no máximo a cada 5 minutos.
+function autoSync() {
+  if (!S.p?.strava?.connected) return;
+  const last = S.p.strava.lastSync ? Date.parse(S.p.strava.lastSync) : 0;
+  if (Date.now() - last > 5 * 60 * 1000) stravaSync(true);
 }
 
 async function loadMe() {
@@ -439,13 +469,15 @@ function startDemo(notConfigured) {
   const d0 = addDays(TODAY, -15);
   const checkins = []; for (let i = 0; i < 40; i++) if ((i * 7 + 2) % 5 < 3) checkins.push(addDays(TODAY, -i));
   const acts = [
-    { id: 1, date: addDays(TODAY, -1), type: "WeightTraining", name: "Treino de pernas", moving_time: 3900, distance: 0 },
+    { id: 1, date: addDays(TODAY, -1), start: addDays(TODAY, -1) + "T18:30:00Z", type: "WeightTraining", name: "Treino de pernas", moving_time: 3900, distance: 0, hr: 128 },
+    { id: 5, date: addDays(TODAY, -1), start: addDays(TODAY, -1) + "T07:10:00Z", type: "Run", name: "Corrida antes do trabalho", moving_time: 1800, distance: 4800, elevation: 32, hr: 151 },
     { id: 2, date: addDays(TODAY, -2), type: "Run", name: "Corrida leve no parque", moving_time: 2280, distance: 5200 },
     { id: 3, date: addDays(TODAY, -4), type: "WeightTraining", name: "Peito e tríceps", moving_time: 3600, distance: 0 },
     { id: 4, date: addDays(TODAY, -6), type: "Ride", name: "Pedal de domingo", moving_time: 5400, distance: 31800 },
   ];
+  for (const a of acts) if (!checkins.includes(a.date)) checkins.push(a.date);
   S.p = { nick: "Exemplo", mascot: "🦍", goal: "ganhar", height: 178, color: "p25", checkins,
-    strava: { connected: true, athlete: "Exemplo", lastSync: new Date().toISOString(), activities: acts },
+    strava: { connected: true, athlete: "Exemplo", lastSync: new Date().toISOString(), activities: acts, notifications: [notifFor(acts[0]), notifFor(acts[1])] },
     measurements: [
       { id: "a1", date: d0, weight: 82.4, fat: 21.5, waist: 91, hip: 101, chest: 103, abdomen: 93, arm: 36, armL: 35.5, thigh: 58, thighL: 57.5, calf: 38, calfL: 37.8 },
       { id: "a2", date: TODAY, weight: 83.1, fat: 20.6, waist: 89.5, hip: 100.5, chest: 104, abdomen: 91, arm: 36.8, armL: 36.4, thigh: 58.5, thighL: 58.2, calf: 38.2, calfL: 38 }] };
@@ -476,13 +508,16 @@ async function stravaConnect(code) {
     await stravaSync(false);
   } catch (e) { toast("Não consegui conectar o Strava: " + e.message); }
 }
+const notifFor = a => ({ id: "s" + a.id, at: new Date().toISOString(), date: a.date, name: a.name || SPORTS[a.type] || a.type || "Treino", type: a.type, moving_time: a.moving_time || 0, read: false });
 async function stravaSync(quiet) {
   if (S.mode === "demo") { toast("Na demonstração os treinos do Strava são de exemplo."); return; }
   if (S.syncing || !S.p) return;
   S.syncing = true; renderStrava();
   try {
     const known = (S.p.strava?.activities || []).filter(a => counts(a.date));
-    let since = S.p.strava?.lastSync ? Date.parse(S.p.strava.lastSync) / 1000 - 3 * 86400 : Date.now() / 1000 - 90 * 86400;
+    // Atividades guardadas sem horário vieram antes dos detalhes: busca tudo de novo para completá-las.
+    const backfill = known.some(a => !a.start);
+    let since = S.p.strava?.lastSync && !backfill ? Date.parse(S.p.strava.lastSync) / 1000 - 3 * 86400 : Date.now() / 1000 - 90 * 86400;
     if (START) since = Math.max(since, Date.parse(START + "T00:00:00Z") / 1000 - 86400);
     const r = await callStrava({ action: "activities", after: Math.floor(since) });
     const got = (r.activities || []).filter(a => counts(a.date));
@@ -494,7 +529,9 @@ async function stravaSync(quiet) {
     const set = new Set((p.checkins || []).filter(counts));
     for (const a of fresh) if (a.date <= TODAY) set.add(a.date);
     p.checkins = [...set].sort();
-    p.strava = { ...(p.strava || {}), connected: true, lastSync: new Date().toISOString(), activities: merged };
+    // A primeira busca traz o histórico todo e não vira notificação.
+    const firstSync = !S.p.strava?.lastSync, oldNotifs = S.p.strava?.notifications || [];
+    p.strava = { ...(p.strava || {}), connected: true, lastSync: new Date().toISOString(), activities: merged, notifications: firstSync ? oldNotifs : [...fresh.map(notifFor), ...oldNotifs].slice(0, 30) };
     S.syncing = false;
     await commit(p, fresh.length ? `${fresh.length} ${fresh.length === 1 ? "treino novo" : "treinos novos"} do Strava.` : quiet ? "" : "Strava em dia, nada novo.", before);
   } catch (e) {
@@ -577,13 +614,21 @@ function chartSvg(k) {
 // ---------- render ----------
 function render() {
   document.documentElement.style.setProperty("--pc", `var(--${S.p?.color || "p25"})`);
-  renderBanner(); renderLogin(); renderHero();
+  renderBanner(); renderLogin(); renderHero(); renderBell();
   const show = (S.mode === "live" || S.mode === "demo") && S.loaded && !!S.p;
   for (const id of ["metrics", "chart", "calendar", "strava", "badges", "history"]) $("#" + id).hidden = !show;
   if (show) { renderMetrics(); renderChart(); renderCalendar(); renderStrava(); renderBadges(); renderHistory(); }
   $("#foot").innerHTML = S.mode === "live"
     ? `Conectado como ${esc(S.email)} · seus dados só aparecem para você · <button type="button" data-act="password">Trocar senha</button> · <button type="button" data-act="logout">Sair</button>`
     : S.mode === "demo" && !S.notConfigured ? `<button type="button" data-act="exitdemo">Sair da demonstração</button>` : "";
+}
+
+function renderBell() {
+  const b = $("#bell"), unread = (S.p?.strava?.notifications || []).filter(n => !n.read).length;
+  b.hidden = !S.p || (S.mode !== "live" && S.mode !== "demo");
+  b.setAttribute("aria-label", unread ? `Notificações: ${unread} novas` : "Notificações");
+  $("#bellCount").hidden = !unread;
+  $("#bellCount").textContent = unread > 9 ? "9+" : unread;
 }
 
 function renderBanner() {
@@ -678,6 +723,7 @@ function renderHero() {
     <dl class="fstats num">
       <div><dt>Peso atual</dt><dd>${isNum(lastVal(st.ms, "weight")) ? fmt(lastVal(st.ms, "weight")) + " kg" : "–"}</dd></div>
       <div><dt>Progresso</dt><dd>${signed(st.score)} pts</dd></div>
+      <div><dt>Treinos</dt><dd>${st.workouts}</dd></div>
       <div><dt>Dias de treino</dt><dd>${st.checkins.length}</dd></div>
       <div><dt>Sequência</dt><dd>${st.streak} ${st.streak === 1 ? "semana" : "semanas"}</dd></div>
       <div><dt>Medir de novo</dt><dd>${next}</dd></div>
@@ -732,17 +778,20 @@ function renderCalendar() {
       const d = fromDay(w + i), day = Number(d.slice(8)), fut = d > TODAY || !counts(d), on = set.has(d) && counts(d);
       const cls = ["cell", on ? (fromStrava.has(d) ? "strava" : "on") : "", meas.has(d) ? "meas" : "", d === TODAY ? "today" : "", fut ? "future" : ""].join(" ");
       const label = `${fmtDateLong(d)}${on ? ", treinou" : ""}${on && fromStrava.has(d) ? " (Strava)" : ""}${meas.has(d) ? ", mediu" : ""}`;
-      const inner = `${day === 1 || (w === first && i === 0) ? `<span class="mo">${MONTHS[Number(d.slice(5, 7)) - 1]}</span>` : ""}${day}`;
-      cells += `<span class="${cls}" title="${label}" aria-label="${label}">${inner}</span>`;
+      const many = on ? st.perDay.get(d) || 1 : 1;
+      const inner = `${day === 1 || (w === first && i === 0) ? `<span class="mo">${MONTHS[Number(d.slice(5, 7)) - 1]}</span>` : ""}${day}${many > 1 ? `<span class="many">${many}x</span>` : ""}`;
+      cells += !fut && (on || meas.has(d))
+        ? `<button type="button" class="${cls}" data-act="day" data-d="${d}" title="${label}" aria-label="${label}${many > 1 ? `, ${many} treinos` : ""}">${inner}</button>`
+        : `<span class="${cls}" title="${label}" aria-label="${label}">${inner}</span>`;
     }
     const n = st.weeks.get(w) || 0;
     cells += `<span class="wk num ${n >= st.wgoal ? "ok" : ""}" title="${n} treinos nesta semana">${n}/${st.wgoal}</span>`;
   }
   const thisWeek = st.weeks.get(last) || 0;
-  $("#calendar").innerHTML = `<div class="sec-head"><div><h2>Frequência</h2><p>Treinos do Strava e do botão “Treinei hoje”.${START && S.mode !== "demo" ? ` Conta a partir de ${fmtDate(START)}.` : ""} Meta: ${st.wgoal} por semana (muda em Editar perfil).</p></div></div>
+  $("#calendar").innerHTML = `<div class="sec-head"><div><h2>Frequência</h2><p>Toque num dia de treino para ver os detalhes.${START && S.mode !== "demo" ? ` Conta a partir de ${fmtDate(START)}.` : ""} Meta: ${st.wgoal} por semana (muda em Editar perfil).</p></div></div>
     <div class="panel"><div class="cal-wrap"><div class="cal">${cells}</div>
-      <div class="cal-side"><div><div class="big num">${thisWeek}/${st.wgoal}</div><small>treinos nesta semana</small></div><div><div class="big num">${st.streak}</div><small>semanas seguidas na meta</small></div></div></div>
-      <div class="cal-legend" style="margin-top:12px"><span><i style="background:var(--pc)"></i>treino marcado</span><span><i style="background:var(--strava)"></i>treino do Strava</span><span><i style="background:var(--xp);border-radius:50%"></i>dia de medição</span></div></div>`;
+      <div class="cal-side"><div><div class="big num">${thisWeek}/${st.wgoal}</div><small>treinos nesta semana</small></div><div><div class="big num">${st.streak}</div><small>semanas seguidas na meta</small></div><div><div class="big num">${st.workouts}</div><small>treinos no total</small></div><div><div class="big num">${st.checkins.length}</div><small>dias de treino</small></div><div class="wide"><div class="big num">${st.workouts * XP.checkin}</div><small>pontos de treino (${XP.checkin} XP por treino)</small></div></div></div>
+      <div class="cal-legend" style="margin-top:12px"><span><i style="background:var(--pc)"></i>treino marcado</span><span><i style="background:var(--strava)"></i>treino do Strava</span><span><i style="background:var(--xp);border-radius:50%"></i>dia de medição</span><span><b>2x</b> mais de um treino no dia</span></div></div>`;
 }
 
 function renderStrava() {
@@ -786,6 +835,29 @@ function renderHistory() {
 // ---------- formulários ----------
 function openSheet(html) { $("#sheetCard").innerHTML = html; $("#sheet").hidden = false; const f = $("#sheetCard input"); if (f) f.focus(); }
 function closeSheet() { $("#sheet").hidden = true; $("#sheetCard").innerHTML = ""; }
+
+function daySheet(d) {
+  const acts = activitiesOn(S.p, d), trained = (S.p.checkins || []).includes(d) && counts(d);
+  const n = trained ? Math.max(1, acts.length) : 0;
+  const meas = (S.p.measurements || []).find(m => m.date === d);
+  const WD = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+  const info = a => [a.start ? a.start.slice(11, 16) : "", a.moving_time ? dur(a.moving_time) : "", a.distance > 0 ? `${fmt(a.distance / 1000)} km` : "", a.elevation > 0 ? `${fmt(a.elevation, 0)} m de subida` : "", a.hr ? `${fmt(a.hr, 0)} bpm` : ""].filter(Boolean).join(" · ");
+  openSheet(`<h2 id="sheetTitle">${WD[new Date(dayNum(d) * 864e5).getUTCDay()]}, ${fmtDate(d)}</h2>
+    ${n ? `<p style="margin:0;color:var(--muted)">${n} ${n === 1 ? "treino" : "treinos"} · +${n * XP.checkin} XP</p>` : ""}
+    ${acts.length && trained ? `<div class="acts">${acts.map(a => `<div class="dayact"><b>${esc(a.name || SPORTS[a.type] || a.type)}</b><small>${esc(SPORTS[a.type] || a.type || "")}</small><span class="num">${esc(info(a))}</span><a href="https://www.strava.com/activities/${encodeURIComponent(a.id)}" target="_blank" rel="noopener">Ver no Strava</a></div>`).join("")}</div>`
+      : trained ? `<p class="note">Treino marcado por você com o botão “Treinei hoje”, sem atividade do Strava.</p>` : ""}
+    ${meas ? `<p class="note">Medição registrada neste dia${isNum(meas.weight) ? `: <b>${fmt(meas.weight)} kg</b>` : ""}.</p>` : ""}
+    <div class="sheet-foot"><button class="btn" type="button" data-act="close">Fechar</button></div>`);
+}
+
+function notificationsSheet() {
+  const list = S.p?.strava?.notifications || [];
+  openSheet(`<h2 id="sheetTitle">Notificações</h2>
+    ${list.length ? `<div class="notifs">${list.map(n => `<button type="button" class="notif ${n.read ? "" : "unread"}" data-act="day" data-d="${esc(n.date)}"><b>${esc(n.name)}</b><small>Treino do Strava de ${fmtDate(n.date)}${n.moving_time ? ` · ${dur(n.moving_time)}` : ""}</small></button>`).join("")}</div>`
+      : `<p class="note">Nada por aqui. Quando um treino novo chegar do Strava, ele aparece neste sino.</p>`}
+    <div class="sheet-foot"><button class="btn" type="button" data-act="close">Fechar</button></div>`);
+  if (list.some(n => !n.read)) { const me = clone(S.p); me.strava.notifications = list.map(n => ({ ...n, read: true })); saveMe(me); }
+}
 
 function profileSheet() {
   const me = S.p || {};
@@ -921,8 +993,10 @@ document.addEventListener("click", async e => {
     if (S.armed !== "strava") { S.armed = "strava"; renderStrava(); return; }
     S.armed = null; stravaDisconnect();
   }
-  else if (act === "checkin" || act === "ck") {
-    const d = act === "ck" ? t.dataset.d : TODAY;
+  else if (act === "bell") notificationsSheet();
+  else if (act === "day") daySheet(t.dataset.d);
+  else if (act === "checkin") {
+    const d = TODAY;
     const me = clone(S.p); const set = new Set(me.checkins || []);
     const adding = !set.has(d);
     adding ? set.add(d) : set.delete(d);
