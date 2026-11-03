@@ -356,7 +356,7 @@ function stats(p) {
 const cfg = window.CARGA_CONFIG || {};
 const configured = !!(cfg.url && cfg.anonKey && !/SEU-PROJETO|SUA-ANON/.test(cfg.url + cfg.anonKey));
 const stravaReady = !!(cfg.stravaClientId && !/SEU/.test(String(cfg.stravaClientId)));
-const S = { mode: "loading", me: null, email: "", p: null, chart: "weight", loaded: false, error: "", armed: null, sent: "", syncing: false };
+const S = { mode: "loading", me: null, email: "", p: null, chart: "weight", loaded: false, error: "", armed: null, sent: "", auth: "login", lastEmail: "", syncing: false };
 let sb = null;
 const pageUrl = () => location.origin + location.pathname;
 
@@ -367,6 +367,7 @@ async function boot() {
   sb = window.supabase.createClient(cfg.url, cfg.anonKey);
   sb.auth.onAuthStateChange((ev, session) => {
     if (session && !S.me) start(session);
+    if (ev === "PASSWORD_RECOVERY") setTimeout(() => passwordSheet(true), 300);
     if (ev === "SIGNED_OUT") location.reload();
   });
   const { data } = await sb.auth.getSession();
@@ -560,7 +561,7 @@ function render() {
   for (const id of ["metrics", "chart", "calendar", "strava", "badges", "history"]) $("#" + id).hidden = !show;
   if (show) { renderMetrics(); renderChart(); renderCalendar(); renderStrava(); renderBadges(); renderHistory(); }
   $("#foot").innerHTML = S.mode === "live"
-    ? `Conectado como ${esc(S.email)} · seus dados só aparecem para você · <button type="button" data-act="logout">Sair</button>`
+    ? `Conectado como ${esc(S.email)} · seus dados só aparecem para você · <button type="button" data-act="password">Trocar senha</button> · <button type="button" data-act="logout">Sair</button>`
     : S.mode === "demo" && !S.notConfigured ? `<button type="button" data-act="exitdemo">Sair da demonstração</button>` : "";
 }
 
@@ -581,15 +582,44 @@ function renderLogin() {
   el.innerHTML = `<div class="login">
     <div>
       <h2>Entre no seu placar</h2>
-      <p>Sem senha: digite seu e-mail e a gente manda um link de acesso. Cada pessoa tem o próprio perfil, e os dados só aparecem para quem é dono deles.</p>
+      <p>Entre com e-mail e senha. Cada pessoa tem o próprio perfil, e os dados só aparecem para quem é dono deles.</p>
       <p><button type="button" class="btn small" data-act="demo">Ver como funciona com dados de exemplo</button></p>
     </div>
-    <form class="form" id="loginForm">
-      <div class="field"><label for="lg-email">Seu e-mail</label><input id="lg-email" type="email" required autocomplete="email" placeholder="voce@email.com" value="${esc(S.sent)}"></div>
-      <button class="btn primary" type="submit" id="lg-btn">Enviar link de acesso</button>
-      ${S.sent ? `<p class="note">Link enviado para <b>${esc(S.sent)}</b>. Abra o e-mail neste aparelho e toque no link.</p>` : ""}
-    </form>
+    ${loginForm()}
   </div>`;
+}
+
+function loginForm() {
+  const v = S.auth, email = `<div class="field"><label for="lg-email">E-mail</label><input id="lg-email" type="email" required autocomplete="email" placeholder="voce@email.com" value="${esc(S.lastEmail)}"></div>`;
+  const note = S.sent ? `<p class="note">${S.sent}</p>` : "";
+  const links = (...a) => `<p style="display:flex;gap:8px;flex-wrap:wrap;margin:0">${a.map(([act, t]) => `<button type="button" class="btn small" data-act="${act}">${t}</button>`).join("")}</p>`;
+  if (v === "signup") return `<form class="form" id="loginForm" data-mode="signup">
+      <h3 style="margin:0">Criar conta</h3>${email}
+      <div class="field"><label for="lg-pw">Senha (mínimo 6 caracteres)</label><input id="lg-pw" type="password" required minlength="6" autocomplete="new-password"></div>
+      <div class="field"><label for="lg-pw2">Repita a senha</label><input id="lg-pw2" type="password" required minlength="6" autocomplete="new-password"></div>
+      <button class="btn primary" type="submit" id="lg-btn">Criar conta</button>${note}
+      ${links(["auth-login", "Já tenho conta"])}
+    </form>`;
+  if (v === "forgot") return `<form class="form" id="loginForm" data-mode="forgot">
+      <h3 style="margin:0">Esqueci a senha</h3>
+      <p style="margin:0;color:var(--muted)">Mandamos um link para o seu e-mail. Ao abrir, você escolhe uma senha nova.</p>${email}
+      <button class="btn primary" type="submit" id="lg-btn">Enviar link</button>${note}
+      ${links(["auth-login", "Voltar para entrar"])}
+    </form>`;
+  return `<form class="form" id="loginForm" data-mode="login">${email}
+      <div class="field"><label for="lg-pw">Senha</label><input id="lg-pw" type="password" required autocomplete="current-password"></div>
+      <button class="btn primary" type="submit" id="lg-btn">Entrar</button>${note}
+      ${links(["auth-signup", "Primeira vez? Criar conta"], ["auth-forgot", "Esqueci a senha"])}
+    </form>`;
+}
+
+function passwordSheet(recovery) {
+  openSheet(`<h2 id="sheetTitle">${recovery ? "Escolha uma senha nova" : "Trocar senha"}</h2>
+    <form class="form" id="pwForm">
+      <div class="field"><label for="pw-new">Nova senha (mínimo 6 caracteres)</label><input id="pw-new" type="password" required minlength="6" autocomplete="new-password"></div>
+      <div class="field"><label for="pw-new2">Repita a senha</label><input id="pw-new2" type="password" required minlength="6" autocomplete="new-password"></div>
+      <div class="sheet-foot"><button class="btn" type="button" data-act="close">Cancelar</button><button class="btn primary" type="submit">Salvar senha</button></div>
+    </form>`);
 }
 
 function renderHero() {
@@ -776,11 +806,35 @@ document.addEventListener("submit", async e => {
   e.preventDefault();
   const f = e.target;
   if (f.id === "loginForm") {
-    const email = $("#lg-email").value.trim(); if (!email) return;
-    $("#lg-btn").disabled = true;
-    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: pageUrl() } });
-    if (error) { toast("Não consegui enviar: " + error.message); $("#lg-btn").disabled = false; return; }
-    S.sent = email; render();
+    const email = $("#lg-email").value.trim(), pw = $("#lg-pw")?.value || "", mode = f.dataset.mode;
+    if (!email) return;
+    if (mode === "signup" && pw !== $("#lg-pw2").value) return toast("As senhas não são iguais.");
+    S.lastEmail = email; $("#lg-btn").disabled = true;
+    const done = (msg) => { S.sent = msg; render(); };
+    if (mode === "login") {
+      const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+      if (!error) return;
+      $("#lg-btn").disabled = false;
+      if (/confirm/i.test(error.message)) return done(`Falta confirmar o e-mail: abra o link que mandamos para <b>${esc(email)}</b> e depois entre com a senha.`);
+      return toast(/invalid/i.test(error.message) ? "E-mail ou senha errados. Se nunca criou senha, use “Esqueci a senha”." : "Não consegui entrar: " + error.message);
+    }
+    if (mode === "signup") {
+      const { data, error } = await sb.auth.signUp({ email, password: pw, options: { emailRedirectTo: pageUrl() } });
+      if (error) { $("#lg-btn").disabled = false; return toast("Não consegui criar a conta: " + error.message); }
+      if (data.session) return;
+      if (data.user && !data.user.identities?.length) { S.auth = "forgot"; return done(`<b>${esc(email)}</b> já tem conta. Peça o link abaixo para criar ou trocar a senha.`); }
+      S.auth = "login"; return done(`Conta criada. Abra o link que mandamos para <b>${esc(email)}</b> para confirmar e depois entre com a senha.`);
+    }
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: pageUrl() });
+    if (error) { $("#lg-btn").disabled = false; return toast("Não consegui enviar: " + error.message); }
+    done(`Link enviado para <b>${esc(email)}</b>. Abra e escolha a senha nova.`);
+  }
+  if (f.id === "pwForm") {
+    const pw = $("#pw-new").value;
+    if (pw !== $("#pw-new2").value) return toast("As senhas não são iguais.");
+    const { error } = await sb.auth.updateUser({ password: pw });
+    if (error) return toast("Não consegui salvar: " + error.message);
+    closeSheet(); toast("Senha salva. Da próxima vez, entre com e-mail e senha.");
   }
   if (f.id === "profileForm") {
     const nick = $("#pf-nick").value.trim(); if (!nick) return;
@@ -826,6 +880,8 @@ document.addEventListener("click", async e => {
   else if (act === "edit") measureSheet(t.dataset.id);
   else if (act === "chart") { S.chart = t.dataset.k; renderChart(); }
   else if (act === "demo") startDemo(false);
+  else if (act.startsWith("auth-")) { S.auth = act.slice(5); S.sent = ""; render(); }
+  else if (act === "password") passwordSheet(false);
   else if (act === "exitdemo") location.reload();
   else if (act === "logout") await sb.auth.signOut();
   else if (act === "stravaconnect") S.mode === "demo" ? toast("Na demonstração não dá para conectar. Entre com seu e-mail primeiro.") : stravaAuthorize();

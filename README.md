@@ -1,6 +1,6 @@
 # Carga Total
 
-Placar pessoal de evolução na academia. Cada medição e cada treino dá XP, e o nível aparece como a carga da sua barra (20 kg vazia, depois anilhas de 10, 15, 20 e 25 kg). Cada pessoa tem o próprio perfil e só vê os próprios dados. Login sem senha, por link no e-mail. Treinos do Strava podem entrar sozinhos.
+Placar pessoal de evolução na academia. Cada medição e cada treino dá XP, e o nível aparece como a carga da sua barra (20 kg vazia, depois anilhas de 10, 15, 20 e 25 kg). Cada pessoa tem o próprio perfil e só vê os próprios dados. Login com e-mail e senha (a conta é confirmada uma vez por link no e-mail, e "Esqueci a senha" manda um link para trocar). Treinos do Strava podem entrar sozinhos.
 
 Site estático (GitHub Pages) + Supabase (login, banco e uma função para o Strava).
 
