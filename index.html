@@ -136,7 +136,6 @@ tr:last-child td { border-bottom: 0; }
 .cell.today { outline: 2px solid var(--ink); outline-offset: 1px; }
 .cell.future { opacity: .3; }
 .cell .mo { position: absolute; left: 4px; top: 3px; font-size: 9px; font-weight: 700; opacity: .8; }
-button.cell:hover { filter: brightness(.92); }
 .wk { display: grid; place-items: center; border-radius: 8px; font-size: 12px; font-weight: 800; color: var(--muted); }
 .wk.ok { color: var(--ink); background: color-mix(in srgb, var(--pc) 22%, transparent); }
 .cal-wrap { display: grid; grid-template-columns: minmax(0, 480px) auto; gap: 24px; align-items: start; }
@@ -309,6 +308,7 @@ const PLATES = [10, 15, 20, 25, 25, 25, 25, 25, 25, 25, 25, 25];
 const PLATE_COLOR = { 10: "color-mix(in srgb, var(--pc) 45%, #fff)", 15: "color-mix(in srgb, var(--pc) 65%, #fff)", 20: "color-mix(in srgb, var(--pc) 82%, #fff)", 25: "var(--pc)" };
 const needXp = L => 50 * (L - 1) * (L + 2);
 const loadOf = L => 20 + 2 * PLATES.slice(0, Math.min(L - 1, PLATES.length)).reduce((a, b) => a + b, 0);
+const weeklyGoalOf = p => Math.min(7, Math.max(1, Math.round(Number(p?.weeklyGoal) || 3)));
 const TITLES = ["Barra vazia", "Aquecendo", "Pegando ritmo", "Constante", "Firme", "Forte", "Fera", "Monstro", "Imparável", "Lenda"];
 const titleOf = L => TITLES[Math.min(L, TITLES.length) - 1] + (L > TITLES.length ? ` ${L - TITLES.length + 1}` : "");
 function levelOf(xp) { let L = 1; while (xp >= needXp(L + 1)) L++; return { level: L, from: needXp(L), to: needXp(L + 1), load: loadOf(L), nextLoad: loadOf(L + 1) }; }
@@ -329,7 +329,7 @@ const BADGES = [
   { id: "arm", glyph: "B+", name: "Braço de aço", desc: "1 cm a mais de braço.", test: c => Math.max(c.delta("arm") || 0, c.delta("armL") || 0) >= 1 },
   { id: "triple", glyph: "3↑", name: "Tripla vitória", desc: "3 medidas melhoraram de uma medição para a seguinte.", test: c => c.bestJump >= 3 },
   { id: "week4", glyph: "4x", name: "Semana cheia", desc: "4 treinos na mesma semana.", test: c => Math.max(0, ...c.weeks.values()) >= 4 },
-  { id: "streak", glyph: "3s", name: "Constância", desc: "3 semanas seguidas com 3 treinos ou mais.", test: c => c.bestStreak >= 3 },
+  { id: "streak", glyph: "3s", name: "Constância", desc: "3 semanas seguidas batendo a meta de treinos.", test: c => c.bestStreak >= 3 },
   { id: "club20", glyph: "20", name: "Clube dos 20", desc: "20 dias de treino.", test: c => c.checkins.length >= 20 },
   { id: "club50", glyph: "50", name: "Clube dos 50", desc: "50 dias de treino.", test: c => c.checkins.length >= 50 },
   { id: "strava", glyph: "S", name: "Sincronizado", desc: "Conectou o Strava e trouxe o primeiro treino.", test: c => (c.p.strava?.activities || []).length > 0 },
@@ -350,12 +350,12 @@ function stats(p) {
   const checkins = [...new Set(p.checkins || [])].filter(d => d <= TODAY && counts(d)).sort();
   const weeks = new Map();
   for (const d of checkins) { const w = mondayOf(d); weeks.set(w, (weeks.get(w) || 0) + 1); }
-  // sequência: semanas seguidas com 3+ treinos; a semana atual só conta depois de bater a meta
-  const thisWeek = mondayOf(TODAY);
-  let w = (weeks.get(thisWeek) || 0) >= 3 ? thisWeek : thisWeek - 7, streak = 0;
-  while ((weeks.get(w) || 0) >= 3) { streak++; w -= 7; }
+  // sequência: semanas seguidas batendo a meta semanal do perfil; a semana atual só conta depois de bater
+  const wgoal = weeklyGoalOf(p), thisWeek = mondayOf(TODAY);
+  let w = (weeks.get(thisWeek) || 0) >= wgoal ? thisWeek : thisWeek - 7, streak = 0;
+  while ((weeks.get(w) || 0) >= wgoal) { streak++; w -= 7; }
   let bestStreak = 0, run = 0;
-  [...weeks.keys()].sort((a, b) => a - b).forEach((k, i, arr) => { run = weeks.get(k) >= 3 ? ((i && arr[i - 1] === k - 7 && weeks.get(arr[i - 1]) >= 3) ? run + 1 : 1) : 0; bestStreak = Math.max(bestStreak, run); });
+  [...weeks.keys()].sort((a, b) => a - b).forEach((k, i, arr) => { run = weeks.get(k) >= wgoal ? ((i && arr[i - 1] === k - 7 && weeks.get(arr[i - 1]) >= wgoal) ? run + 1 : 1) : 0; bestStreak = Math.max(bestStreak, run); });
   const delta = k => { const a = firstVal(ms, k), b = lastVal(ms, k); return isNum(a) && isNum(b) ? b - a : 0; };
   let score = 0;
   for (const m of METRICS) {
@@ -366,7 +366,7 @@ function stats(p) {
   const xp = ms.length * XP.measure + checkins.length * XP.checkin + improvements * XP.improve + badges.length * XP.badge;
   const last = ms[ms.length - 1];
   const nextIn = last ? dayNum(addDays(last.date, 15)) - dayNum(TODAY) : null;
-  return { ms, goal, improvements, checkins, weeks, streak, score: Math.round(score * 10) / 10, badges, xp, nextIn, ...levelOf(xp) };
+  return { ms, goal, improvements, checkins, weeks, wgoal, streak, score: Math.round(score * 10) / 10, badges, xp, nextIn, ...levelOf(xp) };
 }
 
 // ---------- estado ----------
@@ -413,7 +413,7 @@ async function start(session) {
 async function loadMe() {
   const { data, error } = await sb.from("players").select("*").eq("id", S.me).maybeSingle();
   if (error) { S.error = error.message; S.loaded = true; render(); return; }
-  S.p = data ? { nick: data.nick, mascot: data.mascot, goal: data.goal, height: data.height, color: data.color, measurements: data.measurements || [], checkins: data.checkins || [], strava: data.strava || null } : null;
+  S.p = data ? { nick: data.nick, mascot: data.mascot, goal: data.goal, height: data.height, color: data.color, weeklyGoal: data.weekly_goal ?? 3, measurements: data.measurements || [], checkins: data.checkins || [], strava: data.strava || null } : null;
   S.loaded = true; S.error = "";
   render();
 }
@@ -422,7 +422,7 @@ let writing = Promise.resolve();
 function saveMe(p) {
   S.p = p; render();
   if (S.mode === "demo") return Promise.resolve(true);
-  const row = { id: S.me, nick: p.nick, mascot: p.mascot, goal: p.goal, height: p.height, color: p.color, measurements: p.measurements, checkins: p.checkins, strava: p.strava || null };
+  const row = { id: S.me, nick: p.nick, mascot: p.mascot, goal: p.goal, height: p.height, color: p.color, weekly_goal: weeklyGoalOf(p), measurements: p.measurements, checkins: p.checkins, strava: p.strava || null };
   writing = writing.then(async () => {
     const { error } = await sb.from("players").upsert(row);
     if (error) {
@@ -733,15 +733,15 @@ function renderCalendar() {
       const cls = ["cell", on ? (fromStrava.has(d) ? "strava" : "on") : "", meas.has(d) ? "meas" : "", d === TODAY ? "today" : "", fut ? "future" : ""].join(" ");
       const label = `${fmtDateLong(d)}${on ? ", treinou" : ""}${on && fromStrava.has(d) ? " (Strava)" : ""}${meas.has(d) ? ", mediu" : ""}`;
       const inner = `${day === 1 || (w === first && i === 0) ? `<span class="mo">${MONTHS[Number(d.slice(5, 7)) - 1]}</span>` : ""}${day}`;
-      cells += fut ? `<span class="${cls}" title="${label}">${inner}</span>` : `<button type="button" class="${cls}" data-act="ck" data-d="${d}" aria-label="${label}" aria-pressed="${on}" title="${label}">${inner}</button>`;
+      cells += `<span class="${cls}" title="${label}" aria-label="${label}">${inner}</span>`;
     }
     const n = st.weeks.get(w) || 0;
-    cells += `<span class="wk num ${n >= 3 ? "ok" : ""}" title="${n} treinos nesta semana">${n}/3</span>`;
+    cells += `<span class="wk num ${n >= st.wgoal ? "ok" : ""}" title="${n} treinos nesta semana">${n}/${st.wgoal}</span>`;
   }
   const thisWeek = st.weeks.get(last) || 0;
-  $("#calendar").innerHTML = `<div class="sec-head"><div><h2>Frequência</h2><p>Toque num dia para marcar ou desmarcar treino.${START && S.mode !== "demo" ? ` Conta a partir de ${fmtDate(START)}.` : ""} Meta: 3 por semana.</p></div></div>
+  $("#calendar").innerHTML = `<div class="sec-head"><div><h2>Frequência</h2><p>Treinos do Strava e do botão “Treinei hoje”.${START && S.mode !== "demo" ? ` Conta a partir de ${fmtDate(START)}.` : ""} Meta: ${st.wgoal} por semana (muda em Editar perfil).</p></div></div>
     <div class="panel"><div class="cal-wrap"><div class="cal">${cells}</div>
-      <div class="cal-side"><div><div class="big num">${thisWeek}/3</div><small>treinos nesta semana</small></div><div><div class="big num">${st.streak}</div><small>semanas seguidas na meta</small></div></div></div>
+      <div class="cal-side"><div><div class="big num">${thisWeek}/${st.wgoal}</div><small>treinos nesta semana</small></div><div><div class="big num">${st.streak}</div><small>semanas seguidas na meta</small></div></div></div>
       <div class="cal-legend" style="margin-top:12px"><span><i style="background:var(--pc)"></i>treino marcado</span><span><i style="background:var(--strava)"></i>treino do Strava</span><span><i style="background:var(--xp);border-radius:50%"></i>dia de medição</span></div></div>`;
 }
 
@@ -797,6 +797,8 @@ function profileSheet() {
       <div class="field"><span class="lab">Cor da sua anilha</span><div class="pick">${Object.entries(COLORS).map(([k, kg]) => `<label><input type="radio" name="pf-color" id="pf-c-${k}" value="${k}" ${k === color ? "checked" : ""}><span class="plate" style="background:var(--${k})">${kg}</span></label>`).join("")}</div></div>
       <div class="field"><span class="lab">Objetivo</span><div class="seg">${Object.entries(GOALS).map(([k, v]) => `<label><input type="radio" name="pf-goal" id="pf-g-${k}" value="${k}" ${(me.goal || "recomp") === k ? "checked" : ""}><span>${v}</span></label>`).join("")}</div>
         <small style="color:var(--muted)">Define o que conta como progresso: para emagrecer, vale perder peso e cintura; para ganhar massa, vale ganhar peso e braço.</small></div>
+      <div class="field"><span class="lab">Meta de treinos por semana</span><div class="seg">${[1, 2, 3, 4, 5, 6, 7].map(n => `<label><input type="radio" name="pf-wgoal" id="pf-w${n}" value="${n}" ${weeklyGoalOf(me) === n ? "checked" : ""}><span>${n}</span></label>`).join("")}</div>
+        <small style="color:var(--muted)">Bater a meta na semana mantém a sua sequência.</small></div>
       <div class="field" style="max-width:200px"><label for="pf-height">Altura</label><div class="unit"><input id="pf-height" inputmode="decimal" value="${me.height ?? ""}" placeholder="170"><span>cm</span></div></div>
       <div class="sheet-foot"><button class="btn" type="button" data-act="close">Cancelar</button><button class="btn primary" type="submit">Salvar perfil</button></div>
     </form>`);
@@ -870,7 +872,7 @@ document.addEventListener("submit", async e => {
     if (isNum(h) && h > 0 && h < 3) h = Math.round(h * 100); // aceita 1,69 m como 169 cm
     const isNew = !S.p;
     const cur = S.p ? clone(S.p) : { measurements: [], checkins: [], strava: null };
-    Object.assign(cur, { nick, mascot: f.querySelector("[name=pf-mascot]:checked")?.value || "🏋️", color: f.querySelector("[name=pf-color]:checked")?.value || "p25", goal: f.querySelector("[name=pf-goal]:checked")?.value || "recomp", height: isNum(h) ? h : null });
+    Object.assign(cur, { nick, mascot: f.querySelector("[name=pf-mascot]:checked")?.value || "🏋️", color: f.querySelector("[name=pf-color]:checked")?.value || "p25", goal: f.querySelector("[name=pf-goal]:checked")?.value || "recomp", height: isNum(h) ? h : null, weeklyGoal: Number(f.querySelector("[name=pf-wgoal]:checked")?.value) || 3 });
     closeSheet();
     await commit(cur, isNew ? "Perfil criado! Registre a medição de 15 dias atrás e a de hoje." : "Perfil atualizado.");
   }

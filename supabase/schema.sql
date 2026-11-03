@@ -20,6 +20,8 @@ create table if not exists public.players (
   created_at timestamptz not null default now()
 );
 alter table public.players enable row level security;
+-- Meta de treinos por semana de cada pessoa (mantém a sequência).
+alter table public.players add column if not exists weekly_goal smallint not null default 3 check (weekly_goal between 1 and 7);
 
 -- Tokens do Strava: só a Edge Function (service role) mexe aqui; sem policies para a página.
 create table if not exists public.strava_tokens (
