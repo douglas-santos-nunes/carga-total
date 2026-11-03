@@ -846,7 +846,8 @@ document.addEventListener("submit", async e => {
   }
   if (f.id === "profileForm") {
     const nick = $("#pf-nick").value.trim(); if (!nick) return;
-    const h = parseDec($("#pf-height").value);
+    let h = parseDec($("#pf-height").value);
+    if (isNum(h) && h > 0 && h < 3) h = Math.round(h * 100); // aceita 1,69 m como 169 cm
     const isNew = !S.p;
     const cur = S.p ? clone(S.p) : { measurements: [], checkins: [], strava: null };
     Object.assign(cur, { nick, mascot: f.querySelector("[name=pf-mascot]:checked")?.value || "🏋️", color: f.querySelector("[name=pf-color]:checked")?.value || "p25", goal: f.querySelector("[name=pf-goal]:checked")?.value || "recomp", height: isNum(h) ? h : null });
