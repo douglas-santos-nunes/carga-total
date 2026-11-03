@@ -21,7 +21,7 @@ Site estático (GitHub Pages) + Supabase (login, banco e uma função para o Str
 2. Copie o **Client ID** para `stravaClientId` no `config.js`.
 3. No Supabase, **Edge Functions → Deploy a new function → Via Editor**, nome `strava`, cole o conteúdo de `supabase/functions/strava/index.ts` e publique.
 4. **Edge Functions → Secrets**: crie `STRAVA_CLIENT_ID` e `STRAVA_CLIENT_SECRET` com os valores do app do Strava.
-5. Apps novos do Strava aceitam só a conta do dono. Para a segunda pessoa conectar, peça o aumento de capacidade de atletas na própria página de API do Strava.
+5. Apps novos do Strava ficam em "Single Player Mode" (só a conta do dono). Para a segunda pessoa conectar, use o botão de upgrade na mesma página de API (https://www.strava.com/settings/api), que libera até 10 atletas sem análise.
 
 ## Segurança
 
