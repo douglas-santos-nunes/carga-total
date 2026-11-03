@@ -88,13 +88,13 @@ button { cursor: pointer; }
 .f-name p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
 .loadline { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
 .load { font-family: var(--display); font-weight: 900; font-size: 84px; line-height: .85; }
-.load small { font-size: 30px; font-weight: 800; margin-left: 4px; color: var(--muted); }
+.load small { font-size: 30px; font-weight: 800; margin-right: 10px; color: var(--muted); text-transform: uppercase; }
 .lvl { font-family: var(--display); font-weight: 800; font-size: 22px; text-transform: uppercase; color: var(--muted); }
 .barbell { width: 100%; max-width: 480px; height: auto; display: block; margin-inline: auto; }
 .xpbar { height: 12px; background: var(--sunken); border-radius: 99px; overflow: hidden; }
 .xpbar i { display: block; height: 100%; background: var(--xp); border-radius: 99px; transition: width .6s ease; }
 .xptext { margin: -8px 0 0; font-size: 13px; color: var(--muted); }
-.fstats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0; }
+.fstats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 0; }
 .fstats div { background: var(--sunken); border-radius: 10px; padding: 9px 12px; min-width: 0; }
 .fstats dt { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .fstats dd { margin: 2px 0 0; font-weight: 700; font-size: 17px; }
@@ -204,6 +204,7 @@ footer button { background: none; border: 0; color: inherit; text-decoration: un
 @media (max-width: 760px) {
   .a-main { grid-template-columns: 1fr; }
   .fstats { grid-template-columns: repeat(2, 1fr); }
+  .fstats div:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .load { font-size: 66px; }
   .login { grid-template-columns: 1fr; padding: 18px; }
   .login h2 { font-size: 36px; }
@@ -298,6 +299,8 @@ const PLATES = [10, 15, 20, 25, 25, 25, 25, 25, 25, 25, 25, 25];
 const PLATE_COLOR = { 10: "var(--p10)", 15: "var(--p15)", 20: "var(--p20)", 25: "var(--p25)" };
 const needXp = L => 50 * (L - 1) * (L + 2);
 const loadOf = L => 20 + 2 * PLATES.slice(0, Math.min(L - 1, PLATES.length)).reduce((a, b) => a + b, 0);
+const TITLES = ["Barra vazia", "Aquecendo", "Pegando ritmo", "Constante", "Firme", "Forte", "Fera", "Monstro", "Imparável", "Lenda"];
+const titleOf = L => TITLES[Math.min(L, TITLES.length) - 1] + (L > TITLES.length ? ` ${L - TITLES.length + 1}` : "");
 function levelOf(xp) { let L = 1; while (xp >= needXp(L + 1)) L++; return { level: L, from: needXp(L), to: needXp(L + 1), load: loadOf(L), nextLoad: loadOf(L + 1) }; }
 const XP = { measure: 100, checkin: 25, improve: 20, badge: 50 };
 
@@ -638,7 +641,7 @@ function renderHero() {
   const p = S.p;
   if (!p) {
     el.innerHTML = `<div class="athlete"><div class="a-main"><div class="a-id"><h2 style="font-size:40px">Bem-vindo à barra</h2>
-      <p style="margin:0;color:var(--muted)">Crie seu perfil para começar com a barra vazia de 20 kg. Cada medição e cada treino coloca anilhas nela.</p>
+      <p style="margin:0;color:var(--muted)">Crie seu perfil para começar no nível 1, com a barra vazia. Cada medição e cada treino dá XP, e cada nível coloca uma anilha na barra.</p>
       <div class="actions"><button class="btn primary" type="button" data-act="profile">Criar meu perfil</button></div></div>${barbell(1)}</div></div>`;
     return;
   }
@@ -654,13 +657,14 @@ function renderHero() {
           <div class="f-name"><h2>${esc(p.nick)}</h2><p>Objetivo: ${esc(GOALS[p.goal] || "Recomposição")}${p.height ? ` · ${fmt(p.height, 0)} cm` : ""}</p></div>
           <button class="btn small" type="button" data-act="profile">Editar</button>
         </div>
-        <div class="loadline"><span class="load num">${st.load}<small>kg</small></span><span class="lvl">Nível ${st.level}</span></div>
+        <div class="loadline"><span class="load num"><small>Nível</small>${st.level}</span><span class="lvl">${titleOf(st.level)}</span></div>
       </div>
       ${barbell(st.level)}
     </div>
     <div class="xpbar" role="progressbar" aria-valuemin="${st.from}" aria-valuemax="${st.to}" aria-valuenow="${st.xp}" aria-label="Experiência"><i style="width:${pct.toFixed(1)}%"></i></div>
-    <p class="xptext num">${st.xp} XP · faltam ${st.to - st.xp} para a barra de ${st.nextLoad} kg</p>
+    <p class="xptext num">${st.xp} XP · faltam ${st.to - st.xp} XP para o nível ${st.level + 1} · cada nível põe uma anilha na barra</p>
     <dl class="fstats num">
+      <div><dt>Peso atual</dt><dd>${isNum(lastVal(st.ms, "weight")) ? fmt(lastVal(st.ms, "weight")) + " kg" : "–"}</dd></div>
       <div><dt>Progresso</dt><dd>${signed(st.score)} pts</dd></div>
       <div><dt>Dias de treino</dt><dd>${st.checkins.length}</dd></div>
       <div><dt>Sequência</dt><dd>${st.streak} ${st.streak === 1 ? "semana" : "semanas"}</dd></div>
@@ -804,7 +808,7 @@ async function commit(next, baseMsg, beforeStats) {
   const gained = after.xp - (before ? before.xp : 0);
   if (baseMsg) toast(`${baseMsg}${gained > 0 ? ` +${gained} XP` : ""}`);
   const up = before && after.level > before.level;
-  if (up) { toast(`Subiu de nível! Barra com ${after.load} kg`, "lvlup"); confetti(); }
+  if (up) { toast(`Subiu para o nível ${after.level}: ${titleOf(after.level)}!`, "lvlup"); confetti(); }
   const newB = before ? after.badges.filter(b => !before.badges.includes(b)) : [];
   for (const id of newB) toast(`Conquista desbloqueada: ${BADGES.find(x => x.id === id).name}`);
   if (newB.length && !up) confetti(0.5);
