@@ -178,10 +178,11 @@ body { --mus0: color-mix(in srgb, var(--ink) 16%, var(--sunken)); }
 .mus-wrap { display: grid; grid-template-columns: minmax(0, 340px) 1fr; gap: 20px; align-items: center; }
 .bodies { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .bodyfig { margin: 0; display: grid; gap: 4px; justify-items: center; }
-.bodyfig svg { width: 100%; max-width: 160px; height: auto; }
+.bodyfig svg { width: 100%; max-width: 170px; height: auto; }
+.mus { stroke-linejoin: round; transition: fill .3s; }
 .bodyfig figcaption { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
 .body { fill: var(--sunken); }
-.mus { stroke: var(--surface); stroke-width: .8; }
+.mus { stroke: var(--surface); stroke-width: 1.4; }
 .mus-list { display: grid; gap: 12px; }
 .mus-list small { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .mus-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
@@ -225,6 +226,7 @@ body { --mus0: color-mix(in srgb, var(--ink) 16%, var(--sunken)); }
 .acts { display: grid; gap: 0; }
 .act { display: grid; grid-template-columns: 70px 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .act:last-child { border-bottom: 0; }
+.act[data-act] { cursor: pointer; }
 .act .d { font-family: var(--display); font-weight: 800; font-size: 20px; }
 .act .t { min-width: 0; }
 .act .t b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -864,7 +866,8 @@ function renderHero() {
     </dl>
     <div class="hero-actions">
       <button class="btn primary" type="button" data-act="measure">Registrar medidas</button>
-      <button class="btn ${trained ? "done" : "go"}" type="button" data-act="checkin" aria-pressed="${trained}">${trained ? "Treino de hoje ✓" : "Treinei hoje +25 XP"}</button>
+      ${trained ? `<button class="btn done" type="button" data-act="day" data-d="${TODAY}">Treino de hoje ✓</button>`
+        : `<button class="btn go" type="button" data-act="checkin">Treinei hoje +25 XP</button>`}
       <span class="hint">Medição vale ${XP.measure} XP e cada medida que melhora vale mais ${XP.improve}.</span>
     </div>
   </div>`;
@@ -923,36 +926,43 @@ function bodySvg(side, load) {
   const fill = m => { const v = load.get(m) || 0; return v ? `color-mix(in srgb, var(--pc) ${v >= 3 ? 100 : v >= 2 ? 82 : v >= 1 ? 64 : 42}%, var(--surface))` : "var(--mus0)"; };
   const t = m => `<title>${MUSCLES[m]}${load.get(m) ? ` · ${fmt(load.get(m), 1)}` : " · não trabalhado"}</title>`;
   const sh = (m, shape) => `<g style="fill:${fill(m)}" class="mus">${t(m)}${shape}</g>`;
-  const mirror = s => s + `<g transform="translate(120 0) scale(-1 1)">${s}</g>`;
+  // Desenha só o lado esquerdo do corpo (x < 100) e espelha para o direito.
+  const mirror = s => s + `<g transform="translate(200 0) scale(-1 1)">${s}</g>`;
   const base = `<g class="body">
-    <circle cx="60" cy="16" r="11"/><rect x="54" y="25" width="12" height="10" rx="3"/>
-    <path d="M37 35 Q60 29 83 35 L87 60 Q85 96 79 118 L41 118 Q35 96 33 60 Z"/>
-    <path d="M41 114 L79 114 L81 134 L60 142 L39 134 Z"/>
-    ${mirror(`<rect x="21" y="38" width="14" height="46" rx="7"/><rect x="17" y="82" width="13" height="46" rx="6.5"/><circle cx="23" cy="133" r="5.5"/><rect x="40" y="128" width="19" height="64" rx="9.5"/><rect x="42" y="190" width="15" height="50" rx="7.5"/><ellipse cx="49" cy="243" rx="8" ry="4"/>`)}
+    <ellipse cx="100" cy="32" rx="19" ry="23"/><path d="M88 50 L112 50 L114 70 L86 70 Z"/>
+    ${mirror(`<path d="M100 64 L86 66 C74 70 64 72 58 80 C53 90 55 102 59 112 C62 126 64 142 65 158 C65 172 63 186 61 198 C61 214 62 226 66 236 L100 244 Z"/>
+      <path d="M60 78 C47 80 40 92 40 106 C38 122 36 140 36 154 C38 162 50 164 54 156 C58 140 61 122 63 104 Z"/>
+      <path d="M37 150 C31 166 27 184 25 202 C25 210 33 214 38 207 C44 191 50 173 54 156 Z"/>
+      <ellipse cx="29" cy="220" rx="8" ry="13"/>
+      <path d="M63 222 C57 250 57 282 63 312 C68 324 86 326 92 312 C98 290 99 260 99 234 Z"/>
+      <path d="M65 314 C60 340 61 364 67 386 C71 394 85 394 87 386 C91 364 92 340 89 314 Z"/>
+      <ellipse cx="77" cy="397" rx="13" ry="6"/>`)}
   </g>`;
+  const delt = `<path d="M60 79 C48 81 41 93 42 108 C47 113 54 111 58 104 C62 96 65 88 68 82 C66 79 63 78 60 79 Z"/>`;
+  const fore = `<path d="M41 156 C35 168 31 184 30 198 C33 203 38 201 40 196 C46 182 50 168 52 158 C49 154 44 153 41 156 Z"/>`;
   const front = [
-    sh("ombros", mirror(`<ellipse cx="36" cy="44" rx="8" ry="8.5"/>`)),
-    sh("peito", mirror(`<path d="M43 40 Q58 36 59 40 L59 60 Q50 64 41 58 Q39 47 43 40 Z"/>`)),
-    sh("biceps", mirror(`<ellipse cx="28" cy="65" rx="5" ry="13"/>`)),
-    sh("antebraco", mirror(`<ellipse cx="23.5" cy="103" rx="5" ry="16"/>`)),
-    sh("abdomen", `<rect x="51" y="64" width="18" height="47" rx="5"/>`),
-    sh("obliquos", mirror(`<ellipse cx="44.5" cy="88" rx="4.5" ry="17"/>`)),
-    sh("adutores", mirror(`<ellipse cx="56.5" cy="143" rx="2.8" ry="12"/>`)),
-    sh("quadriceps", mirror(`<ellipse cx="48.5" cy="161" rx="7.5" ry="25"/>`)),
-    sh("panturrilhas", mirror(`<ellipse cx="49.5" cy="212" rx="5.5" ry="15"/>`)),
+    sh("ombros", mirror(delt)),
+    sh("peito", mirror(`<path d="M98 82 C86 80 74 81 67 88 C62 97 62 107 66 115 C74 122 88 122 98 117 Z"/>`)),
+    sh("biceps", mirror(`<path d="M51 112 C45 120 43 134 44 146 C48 151 54 149 56 142 C58 130 59 118 57 110 Z"/>`)),
+    sh("antebraco", mirror(fore)),
+    sh("abdomen", mirror(`<rect x="88" y="122" width="10" height="14" rx="3"/><rect x="88" y="139" width="10" height="14" rx="3"/><rect x="88" y="156" width="10" height="14" rx="3"/><path d="M88 173 L98 173 L98 198 C94 198 90 192 88 184 Z"/>`)),
+    sh("obliquos", mirror(`<path d="M84 122 C76 124 70 131 68 141 C67 157 71 173 79 187 L86 189 C86 168 86 145 86 122 Z"/>`)),
+    sh("adutores", mirror(`<path d="M90 236 C94 248 96 262 96 276 C94 281 90 279 88 271 C86 258 86 246 88 236 Z"/>`)),
+    sh("quadriceps", mirror(`<path d="M63 232 C58 258 58 284 65 306 C70 310 75 305 75 297 C73 274 73 252 74 232 Z"/><path d="M77 230 C75 255 75 281 79 305 C83 310 88 307 88 300 C90 278 90 253 88 230 Z"/><path d="M88 282 C86 293 86 303 90 309 C94 305 96 297 94 285 Z"/>`)),
+    sh("panturrilhas", mirror(`<path d="M69 322 C65 336 65 350 69 362 C73 365 77 361 77 353 C77 341 75 331 73 322 Z"/><path d="M85 322 C89 334 89 348 85 360 C82 361 80 357 80 351 C80 339 82 330 85 322 Z"/>`)),
   ];
   const back = [
-    sh("trapezio", `<path d="M60 30 L75 40 L68 57 L60 61 L52 57 L45 40 Z"/>`),
-    sh("ombros", mirror(`<ellipse cx="36" cy="44" rx="8" ry="8.5"/>`)),
-    sh("dorsais", mirror(`<path d="M46 57 L58 63 L58 97 L48 93 Q40 77 40 59 Z"/>`)),
-    sh("triceps", mirror(`<ellipse cx="28" cy="65" rx="5" ry="13"/>`)),
-    sh("antebraco", mirror(`<ellipse cx="23.5" cy="103" rx="5" ry="16"/>`)),
-    sh("lombar", `<rect x="51" y="98" width="18" height="17" rx="4"/>`),
-    sh("gluteos", mirror(`<ellipse cx="51" cy="127" rx="9" ry="10"/>`)),
-    sh("posteriores", mirror(`<ellipse cx="49" cy="165" rx="7.5" ry="23"/>`)),
-    sh("panturrilhas", mirror(`<ellipse cx="49.5" cy="210" rx="6.5" ry="17"/>`)),
+    sh("trapezio", `<path d="M100 54 C92 63 80 69 66 77 C78 84 88 95 94 112 L100 126 L106 112 C112 95 122 84 134 77 C120 69 108 63 100 54 Z"/>`),
+    sh("ombros", mirror(delt)),
+    sh("dorsais", mirror(`<path d="M70 98 C65 111 65 127 69 143 C75 159 85 171 96 179 L98 140 C93 128 86 116 78 104 Z"/>`)),
+    sh("triceps", mirror(`<path d="M53 109 C46 117 42 131 44 146 C48 152 54 150 56 142 C59 128 60 116 58 108 Z"/>`)),
+    sh("antebraco", mirror(fore)),
+    sh("lombar", mirror(`<path d="M90 148 C88 162 88 177 90 192 L98 194 L98 148 Z"/>`)),
+    sh("gluteos", mirror(`<path d="M98 201 C84 199 70 205 66 219 C64 233 70 245 84 247 C92 247 98 241 98 231 Z"/>`)),
+    sh("posteriores", mirror(`<path d="M68 253 C64 275 66 297 72 311 C76 313 80 309 80 303 C80 283 78 265 76 251 Z"/><path d="M82 251 C82 271 84 291 88 307 C92 309 94 305 94 299 C96 281 94 263 92 251 Z"/>`)),
+    sh("panturrilhas", mirror(`<path d="M68 318 C64 333 66 349 72 359 C76 361 80 357 80 349 C80 337 78 325 76 317 Z"/><path d="M82 317 C82 331 84 347 86 357 C90 359 92 353 92 345 C92 333 90 323 86 317 Z"/>`)),
   ];
-  return `<figure class="bodyfig"><svg viewBox="0 0 120 250" role="img" aria-label="Músculos trabalhados, vista de ${side === "front" ? "frente" : "costas"}">${base}${(side === "front" ? front : back).join("")}</svg><figcaption>${side === "front" ? "Frente" : "Costas"}</figcaption></figure>`;
+  return `<figure class="bodyfig"><svg viewBox="0 0 200 410" role="img" aria-label="Músculos trabalhados, vista de ${side === "front" ? "frente" : "costas"}">${base}${(side === "front" ? front : back).join("")}</svg><figcaption>${side === "front" ? "Frente" : "Costas"}</figcaption></figure>`;
 }
 
 function muscleMapHtml(p, monday) {
@@ -962,8 +972,9 @@ function muscleMapHtml(p, monday) {
   const any = Object.values(p.exercises || {}).some(l => l.length);
   const wk = S.mapWeek || 0;
   return `<div class="mus-head"><h3>Músculos trabalhados</h3>
+      <button class="btn small primary" type="button" data-act="exercises" data-d="${TODAY}">+ Registrar exercícios</button>
       <div class="chips" role="group" aria-label="Semana do mapa"><button class="chip" type="button" data-act="mapweek" data-w="0" aria-pressed="${wk === 0}">Esta semana</button><button class="chip" type="button" data-act="mapweek" data-w="-1" aria-pressed="${wk === -1}">Semana passada</button></div></div>
-    ${!any ? `<p class="note" style="margin:0 0 12px">Toque num dia de treino na Frequência e escolha os exercícios que fez. O mapa pinta os músculos trabalhados na semana.</p>` : ""}
+    ${!any ? `<p class="note" style="margin:0 0 12px">Toque em “Registrar exercícios” (ou num dia de treino na Frequência) e escolha o que fez. O mapa pinta os músculos trabalhados na semana.</p>` : ""}
     <div class="mus-wrap"><div class="bodies">${bodySvg("front", load)}${bodySvg("back", load)}</div>
       <div class="mus-list">
         <div><small>Trabalhados</small><div class="mus-tags">${worked.length ? worked.map(m => `<span class="on">${MUSCLES[m]}</span>`).join("") : `<span>Nenhum ainda</span>`}</div></div>
@@ -975,10 +986,11 @@ function muscleMapHtml(p, monday) {
 function exercisesSheet(d) {
   S.pick = new Set((S.p.exercises || {})[d] || []);
   const groups = [...new Set(EXERCISES.map(e => e[2]))];
-  openSheet(`<h2 id="sheetTitle">Exercícios de ${fmtDate(d)}</h2>
+  openSheet(`<h2 id="sheetTitle">Exercícios</h2>
+    <div class="field" style="max-width:220px"><label for="ex-date">Dia do treino</label><input id="ex-date" type="date" value="${d}" max="${TODAY}" ${START ? `min="${START}"` : ""}></div>
     <input type="search" id="ex-q" class="ex-q" placeholder="Buscar exercício" autocomplete="off" aria-label="Buscar exercício">
     <div class="ex-groups">${groups.map(g => `<div class="ex-group" data-group="${g}"><small>${g}</small><div class="chips">${EXERCISES.filter(e => e[2] === g).map(([id, name]) => `<button class="chip" type="button" data-act="expick" data-k="${id}" data-name="${esc(name.toLowerCase())}" aria-pressed="${S.pick.has(id)}">${name}</button>`).join("")}</div></div>`).join("")}</div>
-    <div class="sheet-foot sticky"><span class="hint" id="ex-count" style="margin-right:auto;align-self:center;color:var(--muted)">${S.pick.size} selecionados</span><button class="btn" type="button" data-act="day" data-d="${d}">Voltar</button><button class="btn primary" type="button" data-act="exsave" data-d="${d}">Salvar</button></div>`, false);
+    <div class="sheet-foot sticky"><span class="hint" id="ex-count" style="margin-right:auto;align-self:center;color:var(--muted)">${S.pick.size} selecionados</span><button class="btn" type="button" data-act="close">Cancelar</button><button class="btn primary" type="button" data-act="exsave" data-d="${d}">Salvar</button></div>`, false);
 }
 
 function renderCompare() {
@@ -1178,7 +1190,7 @@ function renderStrava() {
     body = `<div class="actions" style="margin-bottom:8px"><button class="btn small" type="button" data-act="stravasync" ${S.syncing ? "disabled" : ""}>${S.syncing ? "Sincronizando…" : "Sincronizar agora"}</button>
       <span class="hint">${sv.lastSync ? `Última sincronização: ${new Date(sv.lastSync).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}` : "Ainda não sincronizado"}</span>
       <button class="btn small danger" type="button" data-act="stravaoff" style="margin-left:auto">${S.armed === "strava" ? "Confirmar" : "Desconectar"}</button></div>
-      ${acts.length ? `<div class="acts">${acts.map(a => `<div class="act"><span class="d num">${fmtDate(a.date)}</span><div class="t"><b>${esc(a.name || SPORTS[a.type] || a.type)}</b><small>${esc(SPORTS[a.type] || a.type)}</small></div>
+      ${acts.length ? `<div class="acts">${acts.map(a => `<div class="act" data-act="day" data-d="${a.date}" role="button" tabindex="0" title="Ver detalhes do dia"><span class="d num">${fmtDate(a.date)}</span><div class="t"><b>${esc(a.name || SPORTS[a.type] || a.type)}</b><small>${esc(SPORTS[a.type] || a.type)}</small></div>
         <span class="m num">${dur(a.moving_time || 0)}${a.distance > 0 ? `<br>${fmt(a.distance / 1000)} km` : ""}</span></div>`).join("")}</div>`
         : `<p class="note">Nenhuma atividade nos últimos 90 dias.</p>`}`;
   }
@@ -1216,7 +1228,7 @@ function daySheet(d) {
   openSheet(`<h2 id="sheetTitle">${WD[new Date(dayNum(d) * 864e5).getUTCDay()]}, ${fmtDate(d)}</h2>
     ${n ? `<p style="margin:0;color:var(--muted)">${n} ${n === 1 ? "treino" : "treinos"} · +${n * XP.checkin} XP</p>` : ""}
     ${acts.length && trained ? `<div class="acts">${acts.map(a => `<div class="dayact"><b>${esc(a.name || SPORTS[a.type] || a.type)}</b><small>${esc(SPORTS[a.type] || a.type || "")}</small><span class="num">${esc(info(a))}</span><a href="https://www.strava.com/activities/${encodeURIComponent(a.id)}" target="_blank" rel="noopener">Ver no Strava</a></div>`).join("")}</div>`
-      : trained ? `<p class="note">Treino marcado por você com o botão “Treinei hoje”, sem atividade do Strava.</p>` : ""}
+      : trained ? `<p class="note">Treino marcado por você, sem atividade do Strava. <button type="button" class="btn small" data-act="uncheck" data-d="${d}" style="margin-left:6px">Desmarcar</button></p>` : ""}
     ${trained ? (() => {
       const ex = ((S.p.exercises || {})[d] || []).filter(id => EX[id]);
       return `<div class="exblock"><b>Exercícios de musculação</b>
@@ -1230,7 +1242,7 @@ function daySheet(d) {
 // Novidades: aparecem uma vez por versão em cada aparelho; ao lançar outra, troque NEWS_VERSION e a lista.
 const NEWS_VERSION = "2026-11-18b";
 const NEWS = [
-  ["💪", "Exercícios e mapa de músculos", "Toque num dia de treino na Frequência e escolha os exercícios de musculação que fez. Em Esta semana, um boneco de frente e de costas pinta os músculos trabalhados e lista os que faltaram."],
+  ["💪", "Exercícios e mapa de músculos", "Use “Registrar exercícios” em Esta semana (ou toque num dia de treino na Frequência) e escolha os exercícios de musculação que fez, em qualquer dia. Em Esta semana, um boneco de frente e de costas pinta os músculos trabalhados e lista os que faltaram."],
   ["📸", "Fotos de progresso", "Até 4 fotos por medição: frente, lado direito, lado esquerdo e costas. Na seção Fotos você compara a mesma posição entre duas datas, lado a lado. Adicione pelo botão “Fotos” no Histórico. Só você vê as suas."],
   ["📅", "Esta semana", "Resumo da semana atual contra a anterior: treinos, dias, tempo e distância, e os tipos de treino que você fez."],
   ["↔️", "Antes e depois", "Cada medida da primeira à última medição, com verde para o que andou a favor do seu objetivo e vermelho para o que andou contra."],
@@ -1401,6 +1413,10 @@ document.addEventListener("click", async e => {
   else if (act === "bell") notificationsSheet();
   else if (act === "news") newsSheet();
   else if (act === "exercises") exercisesSheet(t.dataset.d);
+  else if (act === "uncheck") {
+    const me = clone(S.p); me.checkins = (me.checkins || []).filter(x => x !== t.dataset.d);
+    closeSheet(); await commit(me, "Treino desmarcado.");
+  }
   else if (act === "expick") {
     const k = t.dataset.k; S.pick.has(k) ? S.pick.delete(k) : S.pick.add(k);
     t.setAttribute("aria-pressed", S.pick.has(k));
@@ -1410,7 +1426,10 @@ document.addEventListener("click", async e => {
     const d = t.dataset.d, me = clone(S.p);
     me.exercises = { ...(me.exercises || {}) };
     if (S.pick.size) me.exercises[d] = EXERCISES.map(e => e[0]).filter(id => S.pick.has(id)); else delete me.exercises[d];
-    await commit(me, S.pick.size ? "Exercícios salvos. Veja o mapa em Esta semana." : "Exercícios removidos.");
+    // Registrar exercícios num dia sem treino marcado já conta o treino.
+    const marked = S.pick.size && !(me.checkins || []).includes(d) && counts(d) && d <= TODAY;
+    if (marked) me.checkins = [...(me.checkins || []), d].sort();
+    await commit(me, S.pick.size ? `Exercícios salvos${marked ? " e treino marcado" : ""}. Veja o mapa em Esta semana.` : "Exercícios removidos.");
     daySheet(d);
   }
   else if (act === "mapweek") { S.mapWeek = Number(t.dataset.w); renderWeek(); }
@@ -1444,6 +1463,7 @@ document.addEventListener("change", e => {
   const t = e.target;
   if (t.matches("input[data-photo-pose]") && t.files?.[0]) uploadPhoto(t.dataset.id, t.dataset.photoPose, t.files[0]);
   if (t.matches("select[data-photo-side]")) { S["photo" + t.dataset.photoSide] = t.value; renderPhotos(); }
+  if (t.id === "ex-date" && t.value && t.value <= TODAY) exercisesSheet(t.value);
 });
 document.addEventListener("input", e => {
   if (e.target.id !== "ex-q") return;
