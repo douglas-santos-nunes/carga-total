@@ -178,11 +178,13 @@ body { --mus0: color-mix(in srgb, var(--ink) 16%, var(--sunken)); }
 .mus-wrap { display: grid; grid-template-columns: minmax(0, 340px) 1fr; gap: 20px; align-items: center; }
 .bodies { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .bodyfig { margin: 0; display: grid; gap: 4px; justify-items: center; }
-.bodyfig svg { width: 100%; max-width: 170px; height: auto; }
+.bodyfig svg { width: 100%; max-width: 200px; height: auto; }
 .mus { stroke-linejoin: round; transition: fill .3s; }
 .bodyfig figcaption { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
 .body { fill: var(--sunken); }
-.mus { stroke: var(--surface); stroke-width: 1.4; }
+.mus { stroke: var(--surface); stroke-width: 1.1; cursor: pointer; }
+.mus-n { fill: color-mix(in srgb, var(--mus0) 55%, var(--sunken)); cursor: default; }
+.fib { fill: none; stroke: #fff; stroke-opacity: .2; stroke-width: .7; stroke-linecap: round; pointer-events: none; }
 .mus-list { display: grid; gap: 12px; }
 .mus-list small { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .mus-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
@@ -925,44 +927,61 @@ function muscleLoad(p, monday) {
 function bodySvg(side, load) {
   const fill = m => { const v = load.get(m) || 0; return v ? `color-mix(in srgb, var(--pc) ${v >= 3 ? 100 : v >= 2 ? 82 : v >= 1 ? 64 : 42}%, var(--surface))` : "var(--mus0)"; };
   const t = m => `<title>${MUSCLES[m]}${load.get(m) ? ` · ${fmt(load.get(m), 1)}` : " · não trabalhado"}</title>`;
-  const sh = (m, shape) => `<g style="fill:${fill(m)}" class="mus">${t(m)}${shape}</g>`;
-  // Desenha só o lado esquerdo do corpo (x < 100) e espelha para o direito.
+  // Cada grupo pode ter várias partes anatômicas; tocar nele mostra os exercícios da semana.
+  const sh = (m, shape) => `<g class="mus" data-act="muscle" data-m="${m}" style="fill:${fill(m)}">${t(m)}${shape}</g>`;
+  const nu = shape => `<g class="mus mus-n">${shape}</g>`; // músculo desenhado só para referência
+  const fib = d => `<path class="fib" d="${d}"/>`;
+  // Desenha só o lado esquerdo do corpo (x ≤ 101) e espelha para o direito.
   const mirror = s => s + `<g transform="translate(200 0) scale(-1 1)">${s}</g>`;
-  const base = `<g class="body">
-    <ellipse cx="100" cy="32" rx="19" ry="23"/><path d="M88 50 L112 50 L114 70 L86 70 Z"/>
-    ${mirror(`<path d="M100 64 L86 66 C74 70 64 72 58 80 C53 90 55 102 59 112 C62 126 64 142 65 158 C65 172 63 186 61 198 C61 214 62 226 66 236 L100 244 Z"/>
-      <path d="M60 78 C47 80 40 92 40 106 C38 122 36 140 36 154 C38 162 50 164 54 156 C58 140 61 122 63 104 Z"/>
-      <path d="M37 150 C31 166 27 184 25 202 C25 210 33 214 38 207 C44 191 50 173 54 156 Z"/>
-      <ellipse cx="29" cy="220" rx="8" ry="13"/>
-      <path d="M63 222 C57 250 57 282 63 312 C68 324 86 326 92 312 C98 290 99 260 99 234 Z"/>
-      <path d="M65 314 C60 340 61 364 67 386 C71 394 85 394 87 386 C91 364 92 340 89 314 Z"/>
-      <ellipse cx="77" cy="397" rx="13" ry="6"/>`)}
-  </g>`;
-  const delt = `<path d="M60 79 C48 81 41 93 42 108 C47 113 54 111 58 104 C62 96 65 88 68 82 C66 79 63 78 60 79 Z"/>`;
-  const fore = `<path d="M41 156 C35 168 31 184 30 198 C33 203 38 201 40 196 C46 182 50 168 52 158 C49 154 44 153 41 156 Z"/>`;
+  const outline = `<path class="body" d="M101 8 L100 8 C88 8 80 18 80 32 C80 44 85 52 91 57 L91 63 C86 68 78 70 70 72 C60 74 52 80 48 92 C43 104 40 120 39 136 C38 148 37 156 35 164 C30 180 26 196 23 212 C22 218 21 222 20 227 C16 233 14 245 16 255 C18 261 24 261 26 255 C28 247 29 239 30 233 C33 216 38 198 42 182 C44 174 47 168 50 162 C53 150 55 136 56 122 C56 116 57 112 58 108 C60 110 61 111 62 112 C63 128 65 142 65 156 C65 170 63 184 62 198 C60 212 60 224 62 236 C57 262 57 290 63 316 C61 340 61 364 66 392 C67 400 68 406 68 410 C63 416 61 422 66 425 L92 425 C95 421 93 414 88 410 C90 390 91 362 89 340 C88 330 88 322 90 316 C94 296 96 270 98 250 L101 236 Z"/>`;
+  const delt = `<path d="M70 75 C60 75 52 81 48 92 C44 104 43 116 44 126 C49 124 54 116 57 106 C60 96 64 86 72 80 C73 78 72 76 70 75 Z"/>`;
+  const fore = `<path d="M36 162 C33 176 29 192 25 210 C25 214 27 216 28 212 C31 198 35 184 41 168 C41 164 39 161 36 162 Z"/><path d="M43 165 C39 178 35 194 31 211 C31 215 33 216 34 212 C37 198 41 184 46 170 C47 166 45 164 43 165 Z"/>`;
   const front = [
+    nu(mirror(`<path d="M92 50 C93 56 96 64 99 70 L97 71 C93 65 90 58 89 52 Z"/>`)), // esternocleidomastoideo
+    sh("trapezio", mirror(`<path d="M90 60 C86 66 78 70 69 73 C73 76 81 76 88 74 C91 72 92 66 92 62 Z"/>`)),
+    sh("biceps", mirror(`<path d="M56 114 C51 121 48 132 47.5 144 C47.5 152 49 158 51.5 160 C53 150 54 138 55 124 Z"/><path d="M44 126 C41 136 40 148 40.5 158 C42 161 44 159 45 154 C45.5 144 45.5 134 44 126 Z"/>`)),
     sh("ombros", mirror(delt)),
-    sh("peito", mirror(`<path d="M98 82 C86 80 74 81 67 88 C62 97 62 107 66 115 C74 122 88 122 98 117 Z"/>`)),
-    sh("biceps", mirror(`<path d="M51 112 C45 120 43 134 44 146 C48 151 54 149 56 142 C58 130 59 118 57 110 Z"/>`)),
+    sh("peito", mirror(`<path d="M98 80 C88 78 78 79 72 82 C66 88 61 98 58 106 C62 114 70 120 80 122 C88 123 94 121 98 118 Z"/>`)),
     sh("antebraco", mirror(fore)),
-    sh("abdomen", mirror(`<rect x="88" y="122" width="10" height="14" rx="3"/><rect x="88" y="139" width="10" height="14" rx="3"/><rect x="88" y="156" width="10" height="14" rx="3"/><path d="M88 173 L98 173 L98 198 C94 198 90 192 88 184 Z"/>`)),
-    sh("obliquos", mirror(`<path d="M84 122 C76 124 70 131 68 141 C67 157 71 173 79 187 L86 189 C86 168 86 145 86 122 Z"/>`)),
-    sh("adutores", mirror(`<path d="M90 236 C94 248 96 262 96 276 C94 281 90 279 88 271 C86 258 86 246 88 236 Z"/>`)),
-    sh("quadriceps", mirror(`<path d="M63 232 C58 258 58 284 65 306 C70 310 75 305 75 297 C73 274 73 252 74 232 Z"/><path d="M77 230 C75 255 75 281 79 305 C83 310 88 307 88 300 C90 278 90 253 88 230 Z"/><path d="M88 282 C86 293 86 303 90 309 C94 305 96 297 94 285 Z"/>`)),
-    sh("panturrilhas", mirror(`<path d="M69 322 C65 336 65 350 69 362 C73 365 77 361 77 353 C77 341 75 331 73 322 Z"/><path d="M85 322 C89 334 89 348 85 360 C82 361 80 357 80 351 C80 339 82 330 85 322 Z"/>`)),
+    sh("obliquos", mirror(`<path d="M65 124 L73 127 C74 129 73 131 71 131 L65 129 Z"/><path d="M65 134 L73 137 C74 139 73 141 71 141 L65 139 Z"/><path d="M66 144 L73 147 C74 149 73 151 71 151 L66 149 Z"/><path d="M87 126 C80 128 76 134 74 144 C72 158 73 174 77 188 C81 198 86 206 92 212 C90 200 88 184 88 166 C88 152 88 138 87 126 Z"/>`)),
+    sh("abdomen", mirror(`<rect x="89" y="124" width="9" height="14" rx="3"/><rect x="89" y="141" width="9" height="14" rx="3"/><rect x="89" y="158" width="9" height="15" rx="3"/><path d="M89 176 L98 176 L98 218 C94 216 90 206 89 194 Z"/>`)),
+    sh("gluteos", mirror(`<path d="M63 204 C61 214 61 226 63 236 C67 232 71 226 73 218 C73 212 69 206 63 204 Z"/>`)),
+    sh("adutores", mirror(`<path d="M82 236 C88 250 92 266 94 284 C95 290 97 284 97 272 C97.5 258 97.5 246 97 236 Z"/>`)),
+    sh("quadriceps", mirror(`<path d="M60 240 C57 262 57.5 288 61 309 C64 314 69 312 69 306 C68 284 68 262 68 244 C67 239 63 237 60 240 Z"/><path d="M70.5 230 C67.5 252 67.5 278 70.5 302 C72.5 310 79 310 80.5 302 C82.5 280 82.5 256 78.5 234 C77 229 73 228 70.5 230 Z"/><path d="M84 280 C81 291 81 304 85 313 C89 317 93 313 93.5 306 C93.5 295 90 286 84 280 Z"/><path d="M67 222 C71 219 75 225 77 232 C81 252 85 274 88 296 C89 304 90 310 90 316 L87 317 C85 302 83 285 80 268 C77 253 73 238 67 226 Z"/>`)),
+    nu(mirror(`<circle cx="79" cy="320" r="5"/><path d="M69 330 C67 348 67 366 69 388 C70 392 73 392 73 388 C73 368 73 350 72 332 Z"/>`)), // patela e tibial anterior
+    sh("panturrilhas", mirror(`<path d="M64 330 C62 342 62 354 64 362 L67 362 C67 352 67 342 68 332 Z"/><path d="M84 326 C88 336 89.5 348 88 362 C86 367 82 365 81 358 C80 346 81 334 84 326 Z"/><path d="M83 368 C85 378 86 390 84 402 L82 402 C82 390 81 378 81 370 Z"/>`)),
+    mirror([
+      "M96 86 C84 90 72 96 62 104", "M96 98 C84 100 72 104 62 109", "M96 110 C84 110 72 112 64 113", // peito
+      "M64 80 C56 88 50 100 47 116", "M60 84 C55 94 52 106 51 118", // ombro
+      "M53 120 C51 132 50 144 51 154", // bíceps
+      "M75 238 C74 260 74 282 76 302", "M63 248 C61 270 61 290 64 306", // quadríceps
+      "M86 334 C87 344 87 352 85 360", // panturrilha
+    ].map(fib).join("")),
   ];
   const back = [
-    sh("trapezio", `<path d="M100 54 C92 63 80 69 66 77 C78 84 88 95 94 112 L100 126 L106 112 C112 95 122 84 134 77 C120 69 108 63 100 54 Z"/>`),
-    sh("ombros", mirror(delt)),
-    sh("dorsais", mirror(`<path d="M70 98 C65 111 65 127 69 143 C75 159 85 171 96 179 L98 140 C93 128 86 116 78 104 Z"/>`)),
-    sh("triceps", mirror(`<path d="M53 109 C46 117 42 131 44 146 C48 152 54 150 56 142 C59 128 60 116 58 108 Z"/>`)),
+    sh("dorsais", mirror(`<path d="M65 122 C63 138 65 156 71 172 C77 184 87 194 99 200 L99 158 C95 146 89 132 81 120 C76 116 70 117 65 122 Z"/><path d="M69 107 C66 111 64 117 64 121 C70 121 76 119 81 114 C77 113 72 111 69 107 Z"/>`)),
+    sh("obliquos", mirror(`<path d="M65 162 C63 174 63 188 65 200 C69 198 72 190 72 180 C71 172 69 166 65 162 Z"/>`)),
+    sh("lombar", mirror(`<path d="M93 160 C91 176 91 194 93 210 L99 212 L99 160 Z"/>`)),
+    sh("ombros", mirror(`${delt}<path d="M86 90 C78 90 71 96 69 104 C71 110 77 113 85 111 C89 105 90 97 86 90 Z"/>`)),
+    sh("trapezio", mirror(`<path d="M101 52 L100 52 C96 60 88 66 72 72 C66 75 67 80 73 82 C81 86 87 96 91 108 C94 120 97 136 100 152 L101 152 Z"/>`)),
+    sh("triceps", mirror(`<path d="M46 106 C42 118 40 132 41 146 C43 151 46 149 47 143 C48 131 48 119 47 106 Z"/><path d="M55 110 C51 120 49 134 49 150 C51 158 54 158 54.5 150 C55 138 55 124 55 112 Z"/>`)),
     sh("antebraco", mirror(fore)),
-    sh("lombar", mirror(`<path d="M90 148 C88 162 88 177 90 192 L98 194 L98 148 Z"/>`)),
-    sh("gluteos", mirror(`<path d="M98 201 C84 199 70 205 66 219 C64 233 70 245 84 247 C92 247 98 241 98 231 Z"/>`)),
-    sh("posteriores", mirror(`<path d="M68 253 C64 275 66 297 72 311 C76 313 80 309 80 303 C80 283 78 265 76 251 Z"/><path d="M82 251 C82 271 84 291 88 307 C92 309 94 305 94 299 C96 281 94 263 92 251 Z"/>`)),
-    sh("panturrilhas", mirror(`<path d="M68 318 C64 333 66 349 72 359 C76 361 80 357 80 349 C80 337 78 325 76 317 Z"/><path d="M82 317 C82 331 84 347 86 357 C90 359 92 353 92 345 C92 333 90 323 86 317 Z"/>`)),
+    sh("gluteos", mirror(`<path d="M63 204 C61 214 61 222 64 228 C72 222 82 214 92 212 C86 205 75 201 63 204 Z"/><path d="M99 214 C86 212 72 218 66 232 C63 244 66 256 76 260 C86 262 94 258 99 250 Z"/>`)),
+    nu(mirror(`<path d="M59 248 C58 266 58 288 61 306 L63 306 C61 288 61 266 61 250 Z"/><path d="M76 398 L82 398 L81 408 L77 408 Z"/>`)), // banda iliotibial e tendão de Aquiles
+    sh("posteriores", mirror(`<path d="M65 264 C62 282 62 300 66 314 C69 318 73 316 74 310 C75 292 74 276 72 264 Z"/><path d="M78 264 C77 282 78 300 82 314 C85 318 89 316 89 310 C90 292 89 276 87 264 Z"/>`)),
+    sh("adutores", mirror(`<path d="M90 258 C93 270 95 284 95 296 C93 300 91 298 90 292 C89 280 89 268 90 258 Z"/>`)),
+    sh("panturrilhas", mirror(`<path d="M65 322 C62 334 62 350 66 362 C70 368 76 366 78 358 C78 344 76 332 72 322 Z"/><path d="M80 322 C80 334 81 348 83 360 C86 366 89 364 89 356 C90 342 88 330 85 322 Z"/><path d="M68 370 C68 380 70 390 74 398 L84 398 C87 390 88 380 87 368 C81 373 74 373 68 370 Z"/>`)),
+    mirror([
+      "M70 126 C74 146 82 166 96 186", "M75 122 C80 140 88 156 98 172", // dorsais
+      "M94 64 C88 70 80 74 74 78", "M98 90 C94 100 92 108 92 116", // trapézio
+      "M96 222 C86 224 76 232 70 246", "M96 238 C88 240 80 246 74 254", // glúteo
+      "M52 116 C51 130 51 142 52 152", // tríceps
+      "M70 330 C68 342 69 352 72 360", "M84 330 C85 342 85 352 84 360", // panturrilha
+      "M69 272 C68 288 68 300 70 310", "M83 272 C83 288 84 300 85 310", // posteriores
+    ].map(fib).join("")),
   ];
-  return `<figure class="bodyfig"><svg viewBox="0 0 200 410" role="img" aria-label="Músculos trabalhados, vista de ${side === "front" ? "frente" : "costas"}">${base}${(side === "front" ? front : back).join("")}</svg><figcaption>${side === "front" ? "Frente" : "Costas"}</figcaption></figure>`;
+  const base = mirror(outline);
+  return `<figure class="bodyfig"><svg viewBox="0 0 200 430" role="img" aria-label="Músculos trabalhados, vista de ${side === "front" ? "frente" : "costas"}">${base}${(side === "front" ? front : back).join("")}</svg><figcaption>${side === "front" ? "Frente" : "Costas"}</figcaption></figure>`;
 }
 
 function muscleMapHtml(p, monday) {
@@ -980,6 +999,7 @@ function muscleMapHtml(p, monday) {
         <div><small>Trabalhados</small><div class="mus-tags">${worked.length ? worked.map(m => `<span class="on">${MUSCLES[m]}</span>`).join("") : `<span>Nenhum ainda</span>`}</div></div>
         <div><small>Faltou trabalhar</small><div class="mus-tags">${missing.length ? missing.map(m => `<span>${MUSCLES[m]}</span>`).join("") : `<span class="on">Corpo todo! 💪</span>`}</div></div>
         <p class="mus-scale"><i style="background:var(--mus0)"></i>nada <i style="background:color-mix(in srgb, var(--pc) 42%, var(--surface))"></i><i style="background:color-mix(in srgb, var(--pc) 64%, var(--surface))"></i><i style="background:color-mix(in srgb, var(--pc) 82%, var(--surface))"></i><i style="background:var(--pc)"></i>muito</p>
+        <p class="mus-scale" style="margin-top:-6px">Toque num músculo do boneco para ver quais exercícios o trabalharam.</p>
       </div></div>`;
 }
 
@@ -1433,6 +1453,11 @@ document.addEventListener("click", async e => {
     daySheet(d);
   }
   else if (act === "mapweek") { S.mapWeek = Number(t.dataset.w); renderWeek(); }
+  else if (act === "muscle") {
+    const m = t.dataset.m, mon = mondayOf(TODAY) + 7 * (S.mapWeek || 0), ex = S.p.exercises || {}, names = new Set();
+    for (let i = 0; i < 7; i++) for (const id of ex[fromDay(mon + i)] || []) if (EX[id] && (EX[id].main.includes(m) || EX[id].aux.includes(m))) names.add(EX[id].name);
+    toast(`${MUSCLES[m]}: ${names.size ? [...names].join(", ") : `não trabalhado ${S.mapWeek ? "na semana passada" : "nesta semana"}`}`);
+  }
   else if (act === "photos") photosSheet(t.dataset.id);
   else if (act === "pose") { S.pose = t.dataset.k; renderPhotos(); }
   else if (act === "photodel") {
