@@ -157,6 +157,19 @@ tr:last-child td { border-bottom: 0; }
 .ba.good .dv { color: var(--good); }
 .ba.bad .dv { color: var(--bad); }
 .ba span { font-size: 13px; color: var(--muted); }
+.slots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.slot { display: grid; gap: 6px; min-width: 0; }
+.slot img, .slot-empty { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; background: var(--sunken); }
+.slot-empty { display: grid; place-items: center; color: var(--muted); font-size: 13px; border: 1px dashed var(--line); }
+.slot-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.slot-btns label { cursor: pointer; position: relative; }
+.sr-file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.pgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; max-width: 640px; }
+.pcmp { margin: 0; display: grid; gap: 6px; min-width: 0; }
+.pcmp img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; background: var(--sunken); }
+.pcmp select, .pcmp figcaption { font: inherit; font-size: 13px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-align: center; }
+.pwait { display: grid; place-items: center; text-align: center; padding: 12px; border-radius: 12px; border: 1px dashed var(--line); color: var(--muted); font-size: 13px; aspect-ratio: 3 / 4; }
+.chip:disabled { opacity: .4; }
 .spark { width: 96px; height: 26px; display: block; }
 .chart svg { width: 100%; height: auto; display: block; }
 
@@ -289,6 +302,7 @@ footer button { background: none; border: 0; color: inherit; text-decoration: un
   <section id="hero" aria-live="polite"><div class="athlete"><h2>Carregando…</h2></div></section>
   <section class="sec" id="week" hidden></section>
   <section class="sec" id="compare" hidden></section>
+  <section class="sec" id="photos" hidden></section>
   <section class="sec" id="metrics" hidden></section>
   <section class="sec" id="chart" hidden></section>
   <section class="sec" id="calendar" hidden></section>
@@ -423,7 +437,7 @@ function stats(p) {
 const cfg = window.CARGA_CONFIG || {};
 const configured = !!(cfg.url && cfg.anonKey && !/SEU-PROJETO|SUA-ANON/.test(cfg.url + cfg.anonKey));
 const stravaReady = !!(cfg.stravaClientId && !/SEU/.test(String(cfg.stravaClientId)));
-const S = { mode: "loading", me: null, email: "", p: null, chart: "weight", loaded: false, error: "", armed: null, sent: "", auth: "login", lastEmail: "", syncing: false };
+const S = { mode: "loading", me: null, email: "", p: null, chart: "weight", loaded: false, error: "", armed: null, pose: "frente", uploading: null, sent: "", auth: "login", lastEmail: "", syncing: false };
 let sb = null;
 const pageUrl = () => location.origin + location.pathname;
 const START = /^\d{4}-\d{2}-\d{2}$/.test(cfg.inicio || "") ? cfg.inicio : "";
@@ -641,8 +655,8 @@ function render() {
   document.documentElement.style.setProperty("--pc", `var(--${S.p?.color || "p25"})`);
   renderBanner(); renderLogin(); renderHero(); renderBell();
   const show = (S.mode === "live" || S.mode === "demo") && S.loaded && !!S.p;
-  for (const id of ["week", "compare", "metrics", "chart", "calendar", "strava", "badges", "history"]) $("#" + id).hidden = !show;
-  if (show) { renderWeek(); renderCompare(); renderMetrics(); renderChart(); renderCalendar(); renderStrava(); renderBadges(); renderHistory(); }
+  for (const id of ["week", "compare", "photos", "metrics", "chart", "calendar", "strava", "badges", "history"]) $("#" + id).hidden = !show;
+  if (show) { renderWeek(); renderCompare(); renderPhotos(); renderMetrics(); renderChart(); renderCalendar(); renderStrava(); renderBadges(); renderHistory(); }
   $("#foot").innerHTML = S.mode === "live"
     ? `Conectado como ${esc(S.email)} · seus dados só aparecem para você · <button type="button" data-act="password">Trocar senha</button> · <button type="button" data-act="logout">Sair</button>`
     : S.mode === "demo" && !S.notConfigured ? `<button type="button" data-act="exitdemo">Sair da demonstração</button>` : "";
@@ -815,6 +829,113 @@ function renderCompare() {
     <div class="ba-grid">${cards}</div></div>`;
 }
 
+// ---------- fotos de progresso ----------
+// Ficam no bucket privado "fotos", em <id do usuário>/<id da medição>/<pose>-<hora>.jpg; a medição guarda os caminhos.
+const POSES = [["frente", "Frente"], ["ladoD", "Lado direito"], ["ladoE", "Lado esquerdo"], ["costas", "Costas"]];
+const photoUrls = new Map(); // caminho -> { url, exp }
+
+async function shrinkPhoto(file) {
+  const src = URL.createObjectURL(file);
+  try {
+    const img = new Image(); img.src = src; await img.decode();
+    const k = Math.min(1, 1440 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    return await new Promise((ok, fail) => c.toBlob(b => b ? ok(b) : fail(new Error("não deu para converter a foto")), "image/jpeg", 0.82));
+  } finally { URL.revokeObjectURL(src); }
+}
+
+async function hydratePhotos(root = document) {
+  const imgs = [...root.querySelectorAll("img[data-photo]")];
+  const now = Date.now();
+  const need = [...new Set(imgs.map(i => i.dataset.photo))].filter(p => !(photoUrls.get(p)?.exp > now + 60000));
+  if (need.length && S.mode === "live") {
+    const { data } = await sb.storage.from("fotos").createSignedUrls(need, 3600);
+    for (const d of data || []) if (d.signedUrl) photoUrls.set(d.path, { url: d.signedUrl, exp: now + 3600 * 1000 });
+  }
+  for (const i of imgs) { const u = photoUrls.get(i.dataset.photo)?.url; if (u && i.src !== u) i.src = u; }
+}
+
+async function uploadPhoto(mid, pose, file) {
+  const m = S.p.measurements.find(x => x.id === mid); if (!m) return;
+  S.uploading = mid + "/" + pose; photosSheet(mid);
+  try {
+    const blob = await shrinkPhoto(file);
+    const path = `${S.mode === "demo" ? "demo" : S.me}/${mid}/${pose}-${Date.now().toString(36)}.jpg`;
+    if (S.mode === "demo") photoUrls.set(path, { url: URL.createObjectURL(blob), exp: Infinity });
+    else {
+      const { error } = await sb.storage.from("fotos").upload(path, blob, { contentType: "image/jpeg" });
+      if (error) throw error;
+    }
+    const old = m.photos?.[pose];
+    const me = clone(S.p), mm = me.measurements.find(x => x.id === mid);
+    mm.photos = { ...(mm.photos || {}), [pose]: path };
+    await saveMe(me);
+    if (old) removePhotos([old]);
+    toast("Foto salva.");
+  } catch (e) { toast("Não consegui salvar a foto: " + (e.message || e)); }
+  S.uploading = null;
+  if (!$("#sheet").hidden) photosSheet(mid);
+}
+
+async function deletePhoto(mid, pose) {
+  const me = clone(S.p), mm = me.measurements.find(x => x.id === mid);
+  const path = mm?.photos?.[pose]; if (!path) return;
+  delete mm.photos[pose];
+  await saveMe(me);
+  removePhotos([path]);
+  photosSheet(mid);
+}
+
+function removePhotos(paths) {
+  if (!paths.length || S.mode !== "live") return;
+  sb.storage.from("fotos").remove(paths).catch(() => {});
+}
+
+function photosSheet(mid) {
+  const m = (S.p.measurements || []).find(x => x.id === mid); if (!m) return;
+  openSheet(`<h2 id="sheetTitle">Fotos de ${fmtDate(m.date)}</h2>
+    <p style="margin:0;color:var(--muted)">Até 4 fotos, uma por posição. Só você vê. Para comparar melhor, tire sempre no mesmo lugar, com a mesma luz e distância.</p>
+    <div class="slots">${POSES.map(([k, label]) => {
+      const path = m.photos?.[k], busy = S.uploading === mid + "/" + k;
+      return `<div class="slot">
+        ${path ? `<img data-photo="${esc(path)}" alt="${label} em ${fmtDate(m.date)}">` : `<div class="slot-empty">${busy ? "Enviando…" : "Sem foto"}</div>`}
+        <b>${label}</b>
+        <div class="slot-btns">
+          <label class="btn small">${busy ? "Enviando…" : path ? "Trocar" : "Adicionar"}<input type="file" accept="image/*" data-id="${esc(mid)}" data-photo-pose="${k}" class="sr-file" ${busy ? "disabled" : ""}></label>
+          ${path ? `<button type="button" class="btn small danger" data-act="photodel" data-id="${esc(mid)}" data-k="${k}">${S.armed === mid + "/" + k ? "Confirmar" : "Remover"}</button>` : ""}
+        </div></div>`;
+    }).join("")}</div>
+    <div class="sheet-foot"><button class="btn" type="button" data-act="close">Fechar</button></div>`);
+  hydratePhotos($("#sheetCard"));
+}
+
+function renderPhotos() {
+  const el = $("#photos"), ms = sortedMs(S.p);
+  if (!ms.length) { el.hidden = true; return; }
+  const withPose = k => ms.filter(m => m.photos?.[k]);
+  const any = POSES.some(([k]) => withPose(k).length);
+  const last = ms[ms.length - 1];
+  let body;
+  if (!any) {
+    body = `<p class="note" style="margin:0 0 12px">Adicione até 4 fotos por medição: frente, lado direito, lado esquerdo e costas. Elas ficam guardadas só para você e aparecem aqui lado a lado para comparar.</p>
+      <button class="btn primary" type="button" data-act="photos" data-id="${esc(last.id)}">Adicionar fotos de ${fmtDate(last.date)}</button>`;
+  } else {
+    if (!withPose(S.pose).length) S.pose = POSES.find(([k]) => withPose(k).length)[0];
+    const list = withPose(S.pose);
+    const pick = (side, def) => list.find(m => m.id === S["photo" + side]) || def;
+    const a = pick("A", list[0]), b = pick("B", list[list.length - 1]);
+    const sel = (side, cur) => `<select data-photo-side="${side}" aria-label="Data da foto ${side === "A" ? "da esquerda" : "da direita"}">${list.map(m => `<option value="${esc(m.id)}" ${m.id === cur.id ? "selected" : ""}>${fmtDateLong(m.date)}</option>`).join("")}</select>`;
+    const fig = (side, m) => `<figure class="pcmp"><img data-photo="${esc(m.photos[S.pose])}" alt="${POSES.find(p => p[0] === S.pose)[1]} em ${fmtDate(m.date)}">${list.length > 1 ? sel(side, m) : `<figcaption>${fmtDateLong(m.date)}</figcaption>`}</figure>`;
+    body = `<div class="chips" role="group" aria-label="Posição" style="margin-bottom:12px">${POSES.map(([k, label]) => `<button class="chip" type="button" data-act="pose" data-k="${k}" aria-pressed="${k === S.pose}" ${withPose(k).length ? "" : "disabled"}>${label}</button>`).join("")}</div>
+      ${list.length > 1 ? `<div class="pgrid">${fig("A", a)}${fig("B", b)}</div>` : `<div class="pgrid">${fig("A", a)}<div class="pwait">Adicione a mesma posição numa próxima medição para comparar aqui.</div></div>`}
+      <div class="actions" style="margin-top:12px"><button class="btn small" type="button" data-act="photos" data-id="${esc(last.id)}">Fotos de ${fmtDate(last.date)}</button><span class="hint">Outras datas: botão “Fotos” no histórico.</span></div>`;
+  }
+  el.innerHTML = `<div class="sec-head"><div><h2>Fotos</h2><p>Compare a mesma posição entre duas datas. Só você vê as suas fotos.</p></div></div><div class="panel">${body}</div>`;
+  hydratePhotos(el);
+}
+
 function renderMetrics() {
   const p = S.p, st = stats(p), ms = st.ms;
   const rows = METRICS.filter(m => ms.some(x => isNum(x[m.k]))).map(m => {
@@ -906,7 +1027,8 @@ function renderHistory() {
     <div class="panel">${ms.length ? ms.map(m => `<div class="hrow">
       <div><div class="hdate num">${fmtDate(m.date)}</div><small style="color:var(--muted)">${m.date.slice(0, 4)}</small></div>
       <div class="hvals num">${METRICS.filter(x => isNum(m[x.k])).map(x => `<span>${x.label} <b>${fmt(m[x.k])} ${x.unit}</b></span>`).join("")}${m.note ? `<span>“${esc(m.note)}”</span>` : ""}</div>
-      <div class="hbtns"><button class="btn small" type="button" data-act="edit" data-id="${esc(m.id)}">Corrigir</button>
+      <div class="hbtns"><button class="btn small" type="button" data-act="photos" data-id="${esc(m.id)}">Fotos${Object.keys(m.photos || {}).length ? ` (${Object.keys(m.photos).length})` : ""}</button>
+        <button class="btn small" type="button" data-act="edit" data-id="${esc(m.id)}">Corrigir</button>
         <button class="btn small danger" type="button" data-act="del" data-id="${esc(m.id)}">${S.armed === m.id ? "Confirmar" : "Apagar"}</button></div>
     </div>`).join("") : `<p class="note">Sem medições ainda.</p>`}</div>`;
 }
@@ -1039,7 +1161,7 @@ document.addEventListener("submit", async e => {
     const editId = f.dataset.edit;
     if (editId) {
       const i = me.measurements.findIndex(m => m.id === editId);
-      me.measurements[i] = { id: editId, date, ...vals, ...(note ? { note } : {}) };
+      me.measurements[i] = { id: editId, date, ...vals, ...(note ? { note } : {}), ...(me.measurements[i].photos ? { photos: me.measurements[i].photos } : {}) };
     } else {
       const same = me.measurements.find(m => m.date === date);
       if (same) { Object.assign(same, vals); if (note) same.note = note; }
@@ -1054,7 +1176,7 @@ document.addEventListener("click", async e => {
   if (e.target === $("#sheet")) return closeSheet();
   const t = e.target.closest("[data-act]");
   const act = t?.dataset.act;
-  if (S.armed && act !== "del" && act !== "stravaoff") { S.armed = null; renderHistory(); renderStrava(); }
+  if (S.armed && act !== "del" && act !== "stravaoff" && act !== "photodel") { S.armed = null; renderHistory(); renderStrava(); }
   if (!t) return;
   if (act === "close") closeSheet();
   else if (act === "profile") profileSheet();
@@ -1073,6 +1195,13 @@ document.addEventListener("click", async e => {
     S.armed = null; stravaDisconnect();
   }
   else if (act === "bell") notificationsSheet();
+  else if (act === "photos") photosSheet(t.dataset.id);
+  else if (act === "pose") { S.pose = t.dataset.k; renderPhotos(); }
+  else if (act === "photodel") {
+    const key = t.dataset.id + "/" + t.dataset.k;
+    if (S.armed !== key) { S.armed = key; photosSheet(t.dataset.id); return; }
+    S.armed = null; deletePhoto(t.dataset.id, t.dataset.k);
+  }
   else if (act === "day") daySheet(t.dataset.d);
   else if (act === "checkin") {
     const d = TODAY;
@@ -1085,11 +1214,18 @@ document.addEventListener("click", async e => {
   else if (act === "del") {
     if (S.armed !== t.dataset.id) { S.armed = t.dataset.id; renderHistory(); return; }
     S.armed = null;
-    const me = clone(S.p); me.measurements = me.measurements.filter(m => m.id !== t.dataset.id);
+    const me = clone(S.p), gone = me.measurements.find(m => m.id === t.dataset.id);
+    me.measurements = me.measurements.filter(m => m.id !== t.dataset.id);
     await commit(me, "Medição apagada.");
+    removePhotos(Object.values(gone?.photos || {}));
   }
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#sheet").hidden) closeSheet(); });
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.matches("input[data-photo-pose]") && t.files?.[0]) uploadPhoto(t.dataset.id, t.dataset.photoPose, t.files[0]);
+  if (t.matches("select[data-photo-side]")) { S["photo" + t.dataset.photoSide] = t.value; renderPhotos(); }
+});
 
 // ---------- feedback ----------
 function toast(msg, kind) {

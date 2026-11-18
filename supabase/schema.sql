@@ -69,5 +69,22 @@ begin
 exception when duplicate_object then null;
 end $$;
 
+-- Fotos de progresso: bucket privado; cada pessoa só mexe na própria pasta (<id do usuário>/...).
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('fotos', 'fotos', false, 5242880, array['image/jpeg'])
+on conflict (id) do nothing;
+
+drop policy if exists "fotos: le as proprias" on storage.objects;
+create policy "fotos: le as proprias" on storage.objects
+  for select to authenticated using (bucket_id = 'fotos' and (storage.foldername(name))[1] = auth.uid()::text and public.is_member());
+
+drop policy if exists "fotos: envia as proprias" on storage.objects;
+create policy "fotos: envia as proprias" on storage.objects
+  for insert to authenticated with check (bucket_id = 'fotos' and (storage.foldername(name))[1] = auth.uid()::text and public.is_member());
+
+drop policy if exists "fotos: apaga as proprias" on storage.objects;
+create policy "fotos: apaga as proprias" on storage.objects
+  for delete to authenticated using (bucket_id = 'fotos' and (storage.foldername(name))[1] = auth.uid()::text);
+
 -- Por último, libere os e-mails (troque pelos de vocês e rode só esta linha):
 -- insert into public.allowed_emails (email) values ('voce@email.com'), ('esposa@email.com');
