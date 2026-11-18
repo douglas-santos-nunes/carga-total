@@ -23,6 +23,9 @@ alter table public.players enable row level security;
 -- Meta de treinos por semana de cada pessoa (mantém a sequência).
 alter table public.players add column if not exists weekly_goal smallint not null default 3 check (weekly_goal between 1 and 7);
 
+-- Exercícios de musculação por dia: { "2026-11-18": ["supino_reto", ...] }.
+alter table public.players add column if not exists exercises jsonb not null default '{}'::jsonb;
+
 -- Tokens do Strava: só a Edge Function (service role) mexe aqui; sem policies para a página.
 create table if not exists public.strava_tokens (
   user_id uuid primary key references auth.users (id) on delete cascade,
