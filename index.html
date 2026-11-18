@@ -170,6 +170,11 @@ tr:last-child td { border-bottom: 0; }
 .pcmp select, .pcmp figcaption { font: inherit; font-size: 13px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-align: center; }
 .pwait { display: grid; place-items: center; text-align: center; padding: 12px; border-radius: 12px; border: 1px dashed var(--line); color: var(--muted); font-size: 13px; aspect-ratio: 3 / 4; }
 .chip:disabled { opacity: .4; }
+.news { display: grid; gap: 4px; }
+.news-item { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.news-item:last-child { border-bottom: 0; }
+.news-ic { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: color-mix(in srgb, var(--pc) 18%, var(--sunken)); font-size: 19px; font-weight: 800; }
+.news-item p { margin: 3px 0 0; color: var(--muted); font-size: 14px; }
 .spark { width: 96px; height: 26px; display: block; }
 .chart svg { width: 100%; height: auto; display: block; }
 
@@ -462,6 +467,7 @@ async function start(session) {
   if (S.me) return;
   S.mode = "live"; S.me = session.user.id; S.email = session.user.email || "";
   await loadMe();
+  maybeShowNews();
   sb.channel("me-live").on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `id=eq.${S.me}` }, () => loadMe()).subscribe();
   const q = new URLSearchParams(location.search);
   if (q.get("state") === "strava") {
@@ -658,7 +664,7 @@ function render() {
   for (const id of ["week", "compare", "photos", "metrics", "chart", "calendar", "strava", "badges", "history"]) $("#" + id).hidden = !show;
   if (show) { renderWeek(); renderCompare(); renderPhotos(); renderMetrics(); renderChart(); renderCalendar(); renderStrava(); renderBadges(); renderHistory(); }
   $("#foot").innerHTML = S.mode === "live"
-    ? `Conectado como ${esc(S.email)} · seus dados só aparecem para você · <button type="button" data-act="password">Trocar senha</button> · <button type="button" data-act="logout">Sair</button>`
+    ? `Conectado como ${esc(S.email)} · seus dados só aparecem para você · <button type="button" data-act="news">Novidades</button> · <button type="button" data-act="password">Trocar senha</button> · <button type="button" data-act="logout">Sair</button>`
     : S.mode === "demo" && !S.notConfigured ? `<button type="button" data-act="exitdemo">Sair da demonstração</button>` : "";
 }
 
@@ -1051,6 +1057,33 @@ function daySheet(d) {
     <div class="sheet-foot"><button class="btn" type="button" data-act="close">Fechar</button></div>`);
 }
 
+// Novidades: aparecem uma vez por versão em cada aparelho; ao lançar outra, troque NEWS_VERSION e a lista.
+const NEWS_VERSION = "2026-11-18";
+const NEWS = [
+  ["📸", "Fotos de progresso", "Até 4 fotos por medição: frente, lado direito, lado esquerdo e costas. Na seção Fotos você compara a mesma posição entre duas datas, lado a lado. Adicione pelo botão “Fotos” no Histórico. Só você vê as suas."],
+  ["📅", "Esta semana", "Resumo da semana atual contra a anterior: treinos, dias, tempo e distância, e os tipos de treino que você fez."],
+  ["↔️", "Antes e depois", "Cada medida da primeira à última medição, com verde para o que andou a favor do seu objetivo e vermelho para o que andou contra."],
+  ["🔔", "Sino de notificações", "Avisa quando um treino novo chega do Strava. Tocar na notificação abre os detalhes daquele dia."],
+  ["🗓️", "Detalhes do dia", "Toque num dia de treino na Frequência para ver as atividades: horário, duração, distância, subida e batimentos."],
+  ["2x", "Dois treinos no mesmo dia", "Cada treino vale 25 XP, e o dia ganha a marca 2x no calendário."],
+  ["🎯", "Meta semanal", "Cada um escolhe de 1 a 7 treinos por semana em Editar perfil. Bater a meta mantém a sequência."],
+];
+
+function newsSheet() {
+  openSheet(`<h2 id="sheetTitle">Novidades</h2>
+    <p style="margin:0;color:var(--muted)">O que mudou no Carga Total e para que serve.</p>
+    <div class="news">${NEWS.map(([ic, t, d]) => `<div class="news-item"><span class="news-ic" aria-hidden="true">${ic}</span><div><b>${t}</b><p>${d}</p></div></div>`).join("")}</div>
+    <div class="sheet-foot"><button class="btn primary" type="button" data-act="close">Entendi</button></div>`);
+  try { localStorage.setItem("carga-news-" + S.me, NEWS_VERSION); } catch {}
+}
+
+function maybeShowNews() {
+  if (S.mode !== "live" || !S.p || !$("#sheet").hidden) return;
+  let seen = null;
+  try { seen = localStorage.getItem("carga-news-" + S.me); } catch {}
+  if (seen !== NEWS_VERSION) newsSheet();
+}
+
 function notificationsSheet() {
   const list = S.p?.strava?.notifications || [];
   openSheet(`<h2 id="sheetTitle">Notificações</h2>
@@ -1195,6 +1228,7 @@ document.addEventListener("click", async e => {
     S.armed = null; stravaDisconnect();
   }
   else if (act === "bell") notificationsSheet();
+  else if (act === "news") newsSheet();
   else if (act === "photos") photosSheet(t.dataset.id);
   else if (act === "pose") { S.pose = t.dataset.k; renderPhotos(); }
   else if (act === "photodel") {
