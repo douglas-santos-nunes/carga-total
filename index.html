@@ -136,6 +136,27 @@ tr:last-child td { border-bottom: 0; }
 .delta { display: inline-block; padding: 2px 8px; border-radius: 99px; font-weight: 700; font-size: 13px; background: var(--sunken); }
 .delta.good { color: var(--good); }
 .delta.bad { color: var(--bad); }
+.wk-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.wk-tile { background: var(--sunken); border-radius: 12px; padding: 12px; display: grid; gap: 2px; min-width: 0; }
+.wk-tile small { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.wk-tile b { font-family: var(--display); font-size: 30px; font-weight: 900; line-height: 1.05; }
+.wk-tile span { font-size: 12.5px; color: var(--muted); }
+.up { color: var(--good); font-weight: 700; }
+.down { color: var(--bad); font-weight: 700; }
+.wk-sports { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.wk-sports span { background: var(--sunken); border-radius: 99px; padding: 4px 11px; font-size: 13px; }
+.ba-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.ba-dates { font-family: var(--display); font-size: 22px; font-weight: 800; }
+.ba-score { font-size: 13px; color: var(--muted); }
+.ba-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.ba { background: var(--sunken); border-radius: 12px; padding: 12px; display: grid; gap: 3px; min-width: 0; border-left: 4px solid var(--line); }
+.ba.good { border-left-color: var(--good); }
+.ba.bad { border-left-color: var(--bad); }
+.ba small { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.ba .dv { font-family: var(--display); font-size: 28px; font-weight: 900; line-height: 1.05; }
+.ba.good .dv { color: var(--good); }
+.ba.bad .dv { color: var(--bad); }
+.ba span { font-size: 13px; color: var(--muted); }
 .spark { width: 96px; height: 26px; display: block; }
 .chart svg { width: 100%; height: auto; display: block; }
 
@@ -225,6 +246,8 @@ footer button { background: none; border: 0; color: inherit; text-decoration: un
 @media (max-width: 760px) {
   .a-main { grid-template-columns: 1fr; }
   .fstats { grid-template-columns: repeat(2, 1fr); }
+  .wk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ba-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .fstats div:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .login { grid-template-columns: 1fr; padding: 18px; }
   .login h2 { font-size: 36px; }
@@ -264,6 +287,8 @@ footer button { background: none; border: 0; color: inherit; text-decoration: un
   <div id="banner" hidden></div>
   <section id="login" hidden></section>
   <section id="hero" aria-live="polite"><div class="athlete"><h2>Carregando…</h2></div></section>
+  <section class="sec" id="week" hidden></section>
+  <section class="sec" id="compare" hidden></section>
   <section class="sec" id="metrics" hidden></section>
   <section class="sec" id="chart" hidden></section>
   <section class="sec" id="calendar" hidden></section>
@@ -616,8 +641,8 @@ function render() {
   document.documentElement.style.setProperty("--pc", `var(--${S.p?.color || "p25"})`);
   renderBanner(); renderLogin(); renderHero(); renderBell();
   const show = (S.mode === "live" || S.mode === "demo") && S.loaded && !!S.p;
-  for (const id of ["metrics", "chart", "calendar", "strava", "badges", "history"]) $("#" + id).hidden = !show;
-  if (show) { renderMetrics(); renderChart(); renderCalendar(); renderStrava(); renderBadges(); renderHistory(); }
+  for (const id of ["week", "compare", "metrics", "chart", "calendar", "strava", "badges", "history"]) $("#" + id).hidden = !show;
+  if (show) { renderWeek(); renderCompare(); renderMetrics(); renderChart(); renderCalendar(); renderStrava(); renderBadges(); renderHistory(); }
   $("#foot").innerHTML = S.mode === "live"
     ? `Conectado como ${esc(S.email)} · seus dados só aparecem para você · <button type="button" data-act="password">Trocar senha</button> · <button type="button" data-act="logout">Sair</button>`
     : S.mode === "demo" && !S.notConfigured ? `<button type="button" data-act="exitdemo">Sair da demonstração</button>` : "";
@@ -734,6 +759,60 @@ function renderHero() {
       <span class="hint">Medição vale ${XP.measure} XP e cada medida que melhora vale mais ${XP.improve}.</span>
     </div>
   </div>`;
+}
+
+// Soma uma semana (segunda a domingo): treinos, dias, tempo e distância das atividades do Strava.
+function weekSummary(p, st, monday) {
+  const out = { workouts: 0, days: 0, time: 0, dist: 0, sports: new Map() };
+  for (let i = 0; i < 7; i++) {
+    const d = fromDay(monday + i), n = st.perDay.get(d);
+    if (!n) continue;
+    out.workouts += n; out.days++;
+    for (const a of activitiesOn(p, d)) {
+      out.time += a.moving_time || 0; out.dist += a.distance || 0;
+      const s = SPORTS[a.type] || a.type || "Treino";
+      out.sports.set(s, (out.sports.get(s) || 0) + 1);
+    }
+    const manual = n - activitiesOn(p, d).length;
+    if (manual > 0) out.sports.set("Marcado por você", (out.sports.get("Marcado por você") || 0) + manual);
+  }
+  return out;
+}
+
+function renderWeek() {
+  const p = S.p, st = stats(p), mon = mondayOf(TODAY);
+  const cur = weekSummary(p, st, mon), prev = weekSummary(p, st, mon - 7);
+  const cmp = (a, b, f) => { const d = a - b; return d === 0 ? "igual à anterior" : `<span class="${d > 0 ? "up" : "down"}">${d > 0 ? "▲" : "▼"} ${f(Math.abs(d))}</span> vs. anterior`; };
+  const hours = s => s ? dur(s) : "0 min", km = m => `${fmt(m / 1000, 1)} km`;
+  const tile = (label, val, sub) => `<div class="wk-tile"><small>${label}</small><b class="num">${val}</b><span>${sub}</span></div>`;
+  const left = 6 - (dayNum(TODAY) - mon);
+  $("#week").innerHTML = `<div class="sec-head"><div><h2>Esta semana</h2><p>De ${fmtDate(fromDay(mon))} até hoje${left > 0 ? `, faltam ${left} ${left === 1 ? "dia" : "dias"}` : ", último dia"}. Comparado com a semana passada inteira.</p></div></div>
+    <div class="panel"><div class="wk-grid">
+      ${tile("Treinos", `${cur.workouts}<small style="font-size:16px">/${st.wgoal}</small>`, cmp(cur.workouts, prev.workouts, n => n))}
+      ${tile("Dias de treino", cur.days, cmp(cur.days, prev.days, n => n))}
+      ${tile("Tempo", hours(cur.time), cmp(cur.time, prev.time, hours))}
+      ${tile("Distância", km(cur.dist), cmp(cur.dist, prev.dist, km))}
+    </div>
+    ${cur.sports.size ? `<div class="wk-sports">${[...cur.sports].sort((a, b) => b[1] - a[1]).map(([s, n]) => `<span>${esc(s)} <b>${n}</b></span>`).join("")}</div>` : `<p class="note" style="margin:12px 0 0">Nenhum treino ainda nesta semana. Semana passada foram ${prev.workouts}.</p>`}
+    </div>`;
+}
+
+function renderCompare() {
+  const st = stats(S.p), ms = st.ms;
+  const el = $("#compare");
+  if (ms.length < 2) { el.hidden = true; return; }
+  let good = 0, bad = 0;
+  const cards = METRICS.map(m => {
+    const a = firstVal(ms, m.k), b = lastVal(ms, m.k);
+    if (!isNum(a) || !isNum(b)) return "";
+    const diff = b - a, d = dirOf(m, st.goal), cls = !diff || !d ? "" : d * diff > 0 ? "good" : "bad";
+    if (cls === "good") good++; if (cls === "bad") bad++;
+    return `<div class="ba ${cls}"><small>${m.label}</small><b class="dv num">${signed(diff)}<small style="font-size:15px;text-transform:none;letter-spacing:0"> ${m.unit}</small></b><span class="num">${fmt(a)} → <b>${fmt(b)}</b> ${m.unit}</span></div>`;
+  }).join("");
+  const first = ms[0].date, last = ms[ms.length - 1].date, days = dayNum(last) - dayNum(first);
+  el.innerHTML = `<div class="sec-head"><div><h2>Antes e depois</h2><p>Primeira medição contra a mais recente. Verde é a favor do objetivo (${esc(GOALS[st.goal]).toLowerCase()}), vermelho é contra.</p></div></div>
+    <div class="panel"><div class="ba-head"><span class="ba-dates num">${fmtDate(first)} → ${fmtDate(last)}</span><span class="ba-score">${days} dias · <span class="up">${good} a favor</span> · <span class="down">${bad} contra</span></span></div>
+    <div class="ba-grid">${cards}</div></div>`;
 }
 
 function renderMetrics() {
